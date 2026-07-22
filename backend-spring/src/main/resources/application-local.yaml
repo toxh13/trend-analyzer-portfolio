@@ -1,0 +1,51 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:oracle:thin:@oracle-db:1521/FREEPDB1}
+    username: ${DB_USERNAME:trend_app}
+    password: ${DB_PASSWORD:trend_app_pw}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+      minimum-idle: 1
+      connection-timeout: 30000
+      idle-timeout: 300000
+      pool-name: TrendRadar-Local-HikariPool
+      connection-properties: {}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.OracleDialect
+      jdbc:
+        batch_size: 50
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: false
+
+discord:
+  bot:
+    token: ${DISCORD_BOT_TOKEN:}
+
+app:
+  security:
+    crawler-api-key: ${CRAWLER_API_KEY:local-dev-crawler-key-change-me}
+  ai:
+    keyword-recommender-url: ${KEYWORD_RECOMMENDER_URL:http://crawler:5000/internal/keyword-merge-suggestions/recommend}
+  oauth2:
+    success-redirect-uri: ${OAUTH2_SUCCESS_REDIRECT_URI:http://localhost:3000}
+  discord:
+    oauth:
+      # 로컬 Discord Developer Portal redirect URI:
+      # http://localhost:8080/api/v1/me/discord/callback
+      client-id: ${DISCORD_OAUTH_CLIENT_ID:}
+      client-secret: ${DISCORD_OAUTH_CLIENT_SECRET:}
+      redirect-uri: ${DISCORD_OAUTH_REDIRECT_URI:http://localhost:8080/api/v1/me/discord/callback}
+      success-redirect-uri: ${DISCORD_LINK_SUCCESS_REDIRECT_URI:http://localhost:3000/my-info}
+      authorization-uri: https://discord.com/oauth2/authorize
+      token-uri: https://discord.com/api/oauth2/token
+      user-info-uri: https://discord.com/api/users/@me

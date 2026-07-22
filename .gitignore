@@ -1,0 +1,137 @@
+# ==============================================================================
+# 운영체제 / 에디터 임시 파일
+# ==============================================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*.tmp
+*.temp
+*.bak
+*.orig
+*.log
+
+.idea/
+.vscode/
+*.iml
+*.sublime-workspace
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ==============================================================================
+# 시크릿 및 로컬 전용 설정
+# ==============================================================================
+# 실제 인증 정보는 Git에 커밋하지 않습니다. 예시 파일만 커밋합니다.
+.env
+.env.*
+!.env.example
+env.local
+env.*.local
+*.local
+*.local.*
+!*.local.example
+
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.cer
+
+# Oracle Wallet과 로컬 인증 정보 내보내기 파일입니다.
+wallet/
+**/wallet/
+Wallet_*.zip
+wallet_*.txt
+*wallet*.zip
+*wallet*.txt
+
+# 로컬 MCP 파일에는 실제 GitHub/Notion 토큰이 들어갈 수 있습니다.
+.mcp/*.local.json
+.mcp/.env
+.ai/mcp/mcp.json
+
+# ==============================================================================
+# 로컬 데이터베이스 및 Docker 볼륨 데이터
+# ==============================================================================
+postgres_data/
+oracle_data/
+oracledb/
+docker-data/
+volumes/
+
+# ==============================================================================
+# 백엔드: Spring Boot / Gradle
+# ==============================================================================
+backend-spring/.gradle/
+backend-spring/build/
+backend-spring/out/
+backend-spring/bin/
+backend-spring/.settings/
+backend-spring/.classpath
+backend-spring/.project
+backend-spring/*.user
+
+# Gradle을 저장소 루트에서 실행하면 루트에도 빌드 산출물이 생길 수 있습니다.
+.gradle/
+build/
+out/
+bin/
+
+# ==============================================================================
+# 프론트엔드: React / Node
+# ==============================================================================
+frontend-react/node_modules/
+frontend-react/build/
+frontend-react/dist/
+frontend-react/coverage/
+
+frontend-react/.env.local
+frontend-react/.env.development.local
+frontend-react/.env.test.local
+frontend-react/.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==============================================================================
+# Python 크롤러
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+venv/
+.venv/
+env/
+ENV/
+crawling-python/venv/
+crawling-python/.venv/
+crawling-python/env/
+crawling-python/ENV/
+
+crawling-python/build/
+crawling-python/dist/
+crawling-python/*.egg-info/
+
+# ==============================================================================
+# 기타 로컬 산출물
+# ==============================================================================
+*.hprof
+*.pid
+*.seed
+*.sqlite
+*.sqlite3
+.mcp/

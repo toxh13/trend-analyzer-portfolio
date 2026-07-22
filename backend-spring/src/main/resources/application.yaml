@@ -1,0 +1,100 @@
+spring:
+  datasource:
+    # [보안/최적화] OCI Autonomous DB(ATP) 연결을 위해 SSL 암호화 채널(TCPS) 기반의 지갑 바인딩 프로퍼티 적용
+    # - 왜 필요한가: 클라우드 DB망은 기본망 유출 위험이 있으므로 오라클 전자지갑 패키지(TNS_ADMIN) 내의
+    #   인증서와 암호화 맵(tnsnames.ora)을 로드하여 패킷 스니핑을 원천 차단해야 합니다.
+    #   런타임 가상머신(Docker) 내부의 유연한 볼륨 경로로 마운트 타깃팅을 파이프라이닝할 수 있도록 플레이스홀더 처리했습니다.
+    url: 'jdbc:oracle:thin:@crawlingdb_medium?TNS_ADMIN=${WALLET_TNS_ADMIN_PATH:/workspace/wallet}'
+    username: ${DB_USERNAME:admin}
+    password: ${DB_PASSWORD} # [보안] 운영 패스워드는 유출 방지를 위해 폴백 디폴트 없이 무조건 OS 런타임 환경변수 주입 강제
+
+    hikari:
+      # [최적화] OCI Always Free 가상 자원 스펙(인스턴스 CPU 및 메모리 제한)에 따른 세션 풀링 최적화
+      # - 왜 필요한가: 커넥션 개수가 과도하게 크면 자원 고갈(OOM 및 세션 드롭)을 유발하고, 너무 적으면 크롤링 벌크 트래픽 유입 시 병목이 발생합니다.
+      #   커넥션 타임아웃을 적절히 조절하여 오라클 DB 프로세스가 좀비 세션을 유지하는 오버헤드를 제어합니다.
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: 3
+      connection-timeout: 30000
+      idle-timeout: 300000
+      pool-name: TrendRadar-HikariPool
+      connection-properties:
+        oracle.net.tns_admin: ${WALLET_TNS_ADMIN_PATH:/workspace/wallet}
+        oracle.net.wallet_location: ${WALLET_TNS_ADMIN_PATH:/workspace/wallet}
+
+  jpa:
+    hibernate:
+      # [보안/정합성] 로컬 인프라 마이그레이션이 완전히 종료되었으므로 'update'가 아닌 'validate' 제약 적용
+      # - 왜 필요한가: 클라우드 운영 환경에서 자바 엔티티 수정 실수로 인해 실 서비스 테이블 구조가 임의로 폭파되거나
+      #   인덱스, 시퀀스가 중복 생성 및 꼬이는 대형 정합성 사고를 방지합니다.
+      ddl-auto: validate
+    show-sql: false # [최적화] 컨테이너 콘솔 내부 다량의 SQL 문자열 I/O 버퍼 낭비를 차단하여 부하 감소
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.OracleDialect
+        oracle.net.tns_admin: ${WALLET_TNS_ADMIN_PATH:/workspace/wallet}
+        oracle.net.wallet_location: ${WALLET_TNS_ADMIN_PATH:/workspace/wallet}
+      jdbc:
+        # [최적화] 파이썬 에이전트로부터 전달되는 대량의 뉴스 기사 명사 키워드를 데이터베이스에 묶음 전송하기 위한 처리
+        # - 왜 필요한가: 단건 Insert 루프는 1건당 1번의 네트워크 왕복(RTT)이 일어나 통신 오버헤드가 극대화됩니다.
+        #   50건 단위의 배칭을 활성화하여 네트워크 I/O 병목을 제거합니다.
+        batch_size: 50
+        order_inserts: true
+        order_updates: true
+
+  # 💡 [추가 보완 주석]
+  # 차후에 MSA 및 트래픽 서빙이 고도화될 경우 지갑의 물리적 마운트 방식마저 제거하고,
+  # OCI Vault(비밀 금고 서비스) API를 스프링 부트 클라우드 볼트 파이프라인과 직접 연동하여
+  # 메모리 상에 자격 증명만 올리는 무파일(Fileless) 보안 체계로 마이그레이션하는 것을 추천합니다.
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: "1"
+    url: jdbc:oracle:thin:@crawlingdb_medium?TNS_ADMIN=${WALLET_TNS_ADMIN_PATH:/workspace/wallet}
+    user: ${DB_USERNAME:admin}
+    password: ${DB_PASSWORD}
+
+discord:
+  bot:
+    token: ${DISCORD_BOT_TOKEN} # 아까 에러가 났던 토큰 영역도 환경 변수로 온전하게 분리
+
+app:
+  security:
+    crawler-api-key: ${CRAWLER_API_KEY}
+  ai:
+    keyword-recommender-url: ${KEYWORD_RECOMMENDER_URL:http://localhost:5000/internal/keyword-merge-suggestions/recommend}
+  oauth2:
+    # OAuth2 로그인 성공 후 이동할 프론트엔드 주소입니다.
+    # 운영에서는 https://도메인 형태로 주입합니다.
+    success-redirect-uri: ${OAUTH2_SUCCESS_REDIRECT_URI:${FRONTEND_BASE_URL:http://localhost:3000}}
+  discord:
+    oauth:
+      # Google OAuth로 로그인한 웹 계정과 Discord Bot 사용 계정을 연결하기 위한 Discord OAuth 설정입니다.
+      client-id: ${DISCORD_OAUTH_CLIENT_ID:}
+      client-secret: ${DISCORD_OAUTH_CLIENT_SECRET:}
+      redirect-uri: ${DISCORD_OAUTH_REDIRECT_URI:http://localhost:8080/api/v1/me/discord/callback}
+      success-redirect-uri: ${DISCORD_LINK_SUCCESS_REDIRECT_URI:${FRONTEND_BASE_URL:http://localhost:3000}/my-info}
+      authorization-uri: https://discord.com/oauth2/authorize
+      token-uri: https://discord.com/api/oauth2/token
+      user-info-uri: https://discord.com/api/users/@me
+
+server:
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        name: JSESSIONID
+        path: /
+        http-only: true
+        secure: true
+        same-site: lax
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      show-details: never

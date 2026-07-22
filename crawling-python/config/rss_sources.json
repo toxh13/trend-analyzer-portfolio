@@ -1,0 +1,32 @@
+{
+  "categories": {
+    "IT/과학": [
+      {
+        "source": "Google News RSS - 인공지능/AI",
+        "feedUrl": "https://news.google.com/rss/search?q=%EC%9D%B8%EA%B3%B5%EC%A7%80%EB%8A%A5%20OR%20AI%20when%3A7d&hl=ko&gl=KR&ceid=KR%3Ako"
+      },
+      {
+        "source": "Google News RSS - 반도체",
+        "feedUrl": "https://news.google.com/rss/search?q=%EB%B0%98%EB%8F%84%EC%B2%B4%20when%3A7d&hl=ko&gl=KR&ceid=KR%3Ako"
+      },
+      {
+        "source": "Google News RSS - 클라우드/보안",
+        "feedUrl": "https://news.google.com/rss/search?q=%ED%81%B4%EB%9D%BC%EC%9A%B0%EB%93%9C%20OR%20%EB%B3%B4%EC%95%88%20when%3A7d&hl=ko&gl=KR&ceid=KR%3Ako"
+      }
+    ],
+    "경제": [
+      {
+        "source": "Google News RSS - 국내 경제",
+        "feedUrl": "https://news.google.com/rss/search?q=%EA%B5%AD%EB%82%B4%20%EA%B2%BD%EC%A0%9C%20when%3A7d&hl=ko&gl=KR&ceid=KR%3Ako"
+      },
+      {
+        "source": "Google News RSS - 증시",
+        "feedUrl": "https://news.google.com/rss/search?q=%EC%A6%9D%EC%8B%9C%20when%3A7d&hl=ko&gl=KR&ceid=KR%3Ako"
+      },
+      {
+        "source": "Google News RSS - 환율",
+        "feedUrl": "https://news.google.com/rss/search?q=%ED%99%98%EC%9C%A8%20when%3A7d&hl=ko&gl=KR&ceid=KR%3Ako"
+      }
+    ]
+  }
+}
