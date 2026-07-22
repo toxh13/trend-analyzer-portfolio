@@ -1,37 +1,31 @@
-# 문서 안내
+# 포트폴리오 문서 인덱스
 
-문서의 기준일은 2026-07-22입니다. 구현 사실은 저장소 코드와 자동 테스트를 우선하며, 운영 완료 여부는 별도로 표시합니다.
+처음 보는 분은 아래 순서로 읽으면 프로젝트의 문제·구현·검증을 빠르게 파악할 수 있습니다.
 
-## 공개 포트폴리오 문서
+1. [프로젝트 README](../README.md) — 한눈에 보는 문제, 라이브 서비스, 구조, 기술 선택
+2. [화면 안내](screens.md) — 실제 배포 화면에서 사용자가 확인하는 기능
+3. [포트폴리오 상세 보고서](portfolio-report.md) — 데이터 파이프라인과 설계 결정
+4. [API 구조](api-reference.md) — 화면·수집·인증·관리자 API의 책임
+5. [데이터베이스 구조](data-model.md) — Oracle ERD, 데이터 단위, 제약 조건
+6. [검증 보고서](verification-report.md) — 테스트·데이터 계약·운영 검증 범위
 
-| 문서 | 역할 |
-|---|---|
-| [`../README.md`](../README.md) | 면접관이 처음 읽는 프로젝트 요약과 실행 진입점 |
-| [`portfolio-report.md`](portfolio-report.md) | 데이터 파이프라인, 지표, 설계 결정과 한계의 상세 설명 |
-| [`verification-report.md`](verification-report.md) | 테스트 결과와 데이터 정확성 검증 범위 |
-| [`screens.md`](screens.md) | 실제 OCI 화면 스크린샷과 화면→API 흐름 |
-| [`api-reference.md`](api-reference.md) | 화면·수집·인증·관리자 API 구조 |
-| [`data-model.md`](data-model.md) | Oracle ERD, grain, 제약, Flyway 구조 |
-| [`../LOCAL_DOCKER.md`](../LOCAL_DOCKER.md) | 로컬 재현 절차 |
-| [`../env.local.example`](../env.local.example) | 실제 비밀정보가 없는 환경변수 예시 |
+## 라이브 서비스
 
-공개 저장소에는 위 문서와 소스 코드만 배포하는 것을 기본으로 합니다. 실제 OCI 배포 workflow, 소셜 로그인 운영 설정, 장애 원문은 공개 패키지에서 제외합니다.
+- [트렌드 대시보드](https://shdomain.kro.kr)
+- [카테고리 분석](https://shdomain.kro.kr/categories)
+- [키워드 비교](https://shdomain.kro.kr/history)
+- [관련 기사 탐색](https://shdomain.kro.kr/articles)
 
-## 내부 문서
+순위와 건수는 수집 시점에 따라 달라집니다. 관리자 기능은 권한이 필요한 내부 운영 영역이므로 공개 문서에서는 구조와 설계 의도만 설명합니다.
 
-| 문서 | 역할 |
-|---|---|
-| [`internal-project-guide.md`](internal-project-guide.md) | 개발·배포·문서 동기화 기준과 로드맵 |
-| [`document-consolidation-map.md`](document-consolidation-map.md) | Notion/기존 Markdown의 통합·폐기 근거 |
-| [`troubleshooting-log.md`](troubleshooting-log.md) | 날짜별 문제 해결 원문과 재발 방지 기록 |
-| [`../SOCIAL_LOGIN_SETUP.md`](../SOCIAL_LOGIN_SETUP.md) | OAuth·Discord 개발 및 운영 설정 |
+## 문서의 상태 표기
 
-## 문서 상태 정의
-
-- **구현**: 현재 코드 경로가 존재합니다.
-- **자동 검증**: 테스트 또는 빌드로 재현했습니다.
-- **로컬 검증**: 로컬 DB·브라우저·Docker에서 확인했습니다.
-- **운영 검증**: OCI 배포 환경에서 실제 데이터로 확인했습니다.
-- **예정**: 코드와 검증이 아직 없습니다.
+| 표기 | 의미 |
+| --- | --- |
+| 구현 | 현재 코드 경로가 존재합니다. |
+| 자동 검증 | 테스트 또는 빌드로 재현했습니다. |
+| 로컬 검증 | 로컬 DB·브라우저·Docker에서 확인했습니다. |
+| 운영 검증 | OCI 배포 환경에서 실제 데이터로 확인했습니다. |
+| 예정 | 코드와 검증이 아직 없습니다. |
 
 구현됐다는 사실만으로 운영 검증까지 끝났다고 표현하지 않습니다.
