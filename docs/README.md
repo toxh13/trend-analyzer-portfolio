@@ -11,10 +11,10 @@
 
 ## 라이브 서비스
 
-- [트렌드 대시보드](https://shdomain.kro.kr)
-- [카테고리 분석](https://shdomain.kro.kr/categories)
-- [키워드 비교](https://shdomain.kro.kr/history)
-- [관련 기사 탐색](https://shdomain.kro.kr/articles)
+- 트렌드 대시보드
+- 카테고리 분석
+- 키워드 비교
+- 관련 기사 탐색
 
 순위와 건수는 수집 시점에 따라 달라집니다. 관리자 기능은 권한이 필요한 내부 운영 영역이므로 공개 문서에서는 구조와 설계 의도만 설명합니다.
 

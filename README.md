@@ -2,12 +2,12 @@
 
 > 뉴스 수집부터 키워드 추출·중복 제거·24시간 트렌드 집계·근거 기사 탐색까지 연결한 데이터 엔지니어링 포트폴리오입니다.
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-shdomain.kro.kr-2563eb?style=for-the-badge)](https://shdomain.kro.kr)
+![Service](https://img.shields.io/badge/Service-운영했던%20서비스%20(현재%20중지)-6b7280?style=for-the-badge)
 [![Portfolio Docs](https://img.shields.io/badge/Portfolio%20Docs-Read%20the%20project-0f766e?style=for-the-badge)](docs/README.md)
 
 | 바로 보기 | 설명 |
 | --- | --- |
-| [🌐 실제 서비스](https://shdomain.kro.kr) | OCI에 배포한 트렌드 대시보드. 수집 시점에 따라 순위·건수는 달라집니다. |
+| 🌐 운영했던 서비스 (현재 중지) | OCI에 배포해 운영했던 트렌드 대시보드입니다. 현재는 중지 상태이며, 화면은 운영 당시 캡처로 확인할 수 있습니다. |
 | [📸 화면별 기능 안내](docs/screens.md) | 인기 키워드, 카테고리, 비교, 기사 탐색, 관리자 구조를 실제 캡처와 번호 설명으로 확인합니다. |
 | [🔌 API 구조](docs/api-reference.md) | 화면·수집·인증·관리자 API의 책임과 호출 흐름입니다. |
 | [🗃️ Oracle 데이터 모델](docs/data-model.md) | ERD, 테이블 grain(데이터 한 행의 단위), 제약 조건, Flyway 마이그레이션입니다. |
@@ -25,15 +25,17 @@ IT 뉴스는 수집원마다 형식이 다르고, 같은 기사나 같은 개념
 | AI 병합이 잘못된 분석을 만들 수 있음 | AI는 후보만 추천하고, 관리자 승인 결과만 alias 규칙과 집계에 반영합니다. |
 | 숫자만으로 분석 결과를 신뢰하기 어려움 | 키워드 비교에서 날짜별 수치와 실제 기사 근거까지 조회할 수 있습니다. |
 
-## 실제 서비스에서 확인할 수 있는 기능
+## 운영 당시 서비스에서 확인할 수 있던 기능
+
+> 서비스는 OCI에서 운영했으며 현재는 중지 상태입니다. 각 기능은 [화면별 기능 안내](docs/screens.md)의 운영 당시 캡처로 확인할 수 있습니다.
 
 | 기능 | 라이브 화면 | 확인 포인트 |
 | --- | --- | --- |
-| 인기·급상승 키워드 | [대시보드](https://shdomain.kro.kr) | 언급량, 변동성, Hot Score와 순위 기준 전환 |
-| 카테고리 분석 | [카테고리](https://shdomain.kro.kr/categories) | IT/과학·경제 단위의 키워드 탐색 |
-| 키워드 비교 | [비교](https://shdomain.kro.kr/history) | 2~30일 기간 선택, 두 키워드의 시계열·근거 기사 |
-| 관련 기사 탐색 | [기사](https://shdomain.kro.kr/articles) | 인기 키워드 선택 후 최신 기사와 7일 흐름 확인 |
-| 키워드 상세 | [예시 화면](https://shdomain.kro.kr/keywords/%EC%9D%B8%EA%B3%B5%EC%A7%80%EB%8A%A5) | 선택 키워드의 추이와 기사 탐색 |
+| 인기·급상승 키워드 | 대시보드 | 언급량, 변동성, Hot Score와 순위 기준 전환 |
+| 카테고리 분석 | 카테고리 | IT/과학·경제 단위의 키워드 탐색 |
+| 키워드 비교 | 비교 | 2~30일 기간 선택, 두 키워드의 시계열·근거 기사 |
+| 관련 기사 탐색 | 기사 | 인기 키워드 선택 후 최신 기사와 7일 흐름 확인 |
+| 키워드 상세 | 예시 화면 | 선택 키워드의 추이와 기사 탐색 |
 
 관리자 화면은 권한이 필요한 내부 운영 기능입니다. 공개 저장소에는 구조와 설계 의도만 [화면 안내](docs/screens.md#5-관리자-화면-내부-운영-기능)로 제공합니다.
 
