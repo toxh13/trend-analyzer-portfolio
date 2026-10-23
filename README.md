@@ -114,7 +114,7 @@ hotnessScore  = mentionCount × 0.4 + velocityScore × 0.6
 | API·배치 | Java 21, Spring Boot 3, Spring Security, JPA, Flyway | 트랜잭션, 인증, 스케줄 배치, DB 계약 관리를 한 서비스에 집중합니다. |
 | 데이터베이스 | Oracle ATP / Oracle Free | OCI 운영 환경과 로컬 재현 환경을 같은 SQL 계열로 유지합니다. |
 | 화면 | React 19, Recharts | 트렌드·비교·운영 상태를 탐색 가능한 화면으로 표현합니다. |
-| 배포 | Docker Compose, GitHub Actions, OCIR, OCI VM | 개인 프로젝트 규모에서 재현성과 운영 비용의 균형을 맞춥니다. |
+| 배포 | Docker Compose, OCIR, OCI VM | 개인 프로젝트 규모에서 재현성과 운영 비용의 균형을 맞춥니다. 배포 워크플로는 비공개 개발 저장소에서 운영했고, 이 저장소에는 코드 품질 검사(Qodana)만 있습니다. |
 
 Kafka·Spark·별도 벡터 DB·마이크로서비스는 현재 데이터량과 OCI 무료 자원에서 얻는 가치보다 운영 복잡도가 커서 도입하지 않았습니다.
 
@@ -127,7 +127,7 @@ Kafka·Spark·별도 벡터 DB·마이크로서비스는 현재 데이터량과 
 | Spring Boot | 70 tests passed |
 | React | 13 suites, 51 tests passed, production build 성공 |
 | Python | 47 tests passed, `compileall` 성공 |
-| 데이터베이스 | Flyway V2~V8, Oracle 제약과 수량 대사 계약 반영 |
+| 데이터베이스 | Flyway V2~V9, Oracle 제약과 수량 대사 계약 반영 |
 
 검증 방법과 남은 범위는 [검증 보고서](docs/verification-report.md)에서 확인할 수 있습니다.
 
@@ -165,7 +165,9 @@ docker compose -f docker-compose.local.yml --env-file env.local up --build
 - `backendAcknowledgedCount`는 HTTP 정상 응답 수이며 신규 DB 저장 건수와 같지 않습니다.
 - SentenceTransformer 모델의 ARM64 메모리·초기 로딩 비용은 추가 측정이 필요합니다.
 - Redis 기반 분산 제한은 단일 OCI VM 구성에서 필요성이 낮아 보류했습니다.
+- 키워드 병합 추천은 실제 데이터에서 기준점(0.85)을 넘는 후보가 없어 0건이며, 기준 조정은 보류 중입니다.
+- Discord 연결 E2E 검증은 완료하지 못했습니다.
 
 ## License
 
-개인 학습 및 데이터 엔지니어·데이터 분석가 포트폴리오 목적의 프로젝트입니다.
+개인 학습 및 데이터 엔지니어 포트폴리오 목적의 프로젝트입니다.

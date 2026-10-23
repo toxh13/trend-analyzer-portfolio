@@ -1,6 +1,6 @@
 # 데이터베이스 구조
 
-Oracle 기준의 핵심 테이블과 데이터 단위(grain)를 설명합니다. 스키마 변경은 Flyway V2~V8로 관리합니다.
+Oracle 기준의 핵심 테이블과 데이터 단위(grain)를 설명합니다. 스키마 변경은 Flyway V2~V9로 관리합니다.
 
 ## ERD
 
@@ -121,3 +121,4 @@ selected_count
 - V6: 대표 키워드·alias·AI 추천 후보
 - V7: `trend_metrics` grain unique 제약
 - V8: 배치·채널 실행 이력과 수량 대사 제약
+- V9: 키워드 병합 추천 실행 이력

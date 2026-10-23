@@ -48,7 +48,7 @@ sequenceDiagram
 - Spring Security 필터 체인, OAuth2/OIDC, 세션, CSRF
 - JPA 트랜잭션과 Oracle 저장
 - `@Scheduled` 기반 시간별 트렌드 분석과 보존 정리
-- Flyway V2~V8 스키마 버전 관리
+- Flyway V2~V9 스키마 버전 관리
 - Micrometer 기반 배치 메트릭
 
 프레임워크가 스케줄 호출과 트랜잭션 경계를 제공하지만, 시간 구간·중복 제거·수량 대사·지표 계산 규칙은 프로젝트가 직접 구현했습니다.
@@ -101,7 +101,7 @@ grain은 “테이블의 한 행이 무엇을 의미하는가”입니다. 집�
 | `crawl_batch_runs` | 수집 배치 1회 | `run_id` unique, 수량 check |
 | `crawl_channel_runs` | 배치 × 채널 | 채널·상태 check |
 
-초기 설계의 PostgreSQL `BIGSERIAL` 문서는 사용하지 않습니다. 현재 기준은 Oracle `NUMBER`, sequence, Flyway V2~V8입니다.
+초기 설계의 PostgreSQL `BIGSERIAL` 문서는 사용하지 않습니다. 현재 기준은 Oracle `NUMBER`, sequence, Flyway V2~V9입니다.
 
 ## 5. 트렌드 지표
 
