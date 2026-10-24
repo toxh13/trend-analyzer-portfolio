@@ -1,0 +1,296 @@
+{
+  "schemaVersion": 1,
+  "keyword": "반도체",
+  "slug": "40f5c8093251f77d",
+  "aliases": [],
+  "searchKeywords": [
+    "반도체"
+  ],
+  "timezone": "Asia/Seoul",
+  "today": "2026-10-24",
+  "generatedAt": "2026-10-24T03:00:00Z",
+  "daily": [
+    {
+      "day": "2026-09-25",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-09-26",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-09-27",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-09-28",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-09-29",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-09-30",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-01",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-02",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-03",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-04",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-05",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-06",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-07",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-08",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-09",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-10",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-11",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-12",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-13",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-14",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-15",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-16",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-17",
+      "articleCount": 1,
+      "weightedScore": 1.1
+    },
+    {
+      "day": "2026-10-18",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-19",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-20",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-21",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-22",
+      "articleCount": 3,
+      "weightedScore": 3.293
+    },
+    {
+      "day": "2026-10-23",
+      "articleCount": 3,
+      "weightedScore": 3.25
+    },
+    {
+      "day": "2026-10-24",
+      "articleCount": 1,
+      "weightedScore": 1.0
+    }
+  ],
+  "articles": [
+    {
+      "id": "article-deb9d8ffad190ff3",
+      "title": "고정 기사 14",
+      "source": "다음 뉴스",
+      "date": "2026-10-24T07:30:00",
+      "url": "https://news.example.com/daum/014"
+    },
+    {
+      "id": "article-f860ec6edad33054",
+      "title": "고정 기사 13",
+      "source": "다음 뉴스",
+      "date": "2026-10-23T20:00:00",
+      "url": "https://news.example.com/daum/013"
+    },
+    {
+      "id": "article-50c1bb0696ff7508",
+      "title": "고정 기사 11",
+      "source": "네이버 뉴스",
+      "date": "2026-10-23T14:00:00",
+      "url": "https://news.example.com/naver/011"
+    },
+    {
+      "id": "article-3057e72028f5e508",
+      "title": "고정 기사 10",
+      "source": "네이버 뉴스",
+      "date": "2026-10-23T12:10:00",
+      "url": "https://news.example.com/naver/010"
+    },
+    {
+      "id": "article-a2725bf9684b3e85",
+      "title": "고정 기사 5",
+      "source": "네이버 뉴스",
+      "date": "2026-10-22T13:00:00",
+      "url": "https://news.example.com/naver/005"
+    },
+    {
+      "id": "article-2a256716ce390520",
+      "title": "고정 기사 4",
+      "source": "Google News RSS - 반도체",
+      "date": "2026-10-22T12:05:00",
+      "url": "https://news.example.com/rss/004"
+    },
+    {
+      "id": "article-277039c1a7b751af",
+      "title": "고정 기사 1",
+      "source": "네이버 뉴스",
+      "date": "2026-10-22T08:00:00",
+      "url": "https://news.example.com/naver/001"
+    },
+    {
+      "id": "article-b81b01df734bfb1c",
+      "title": "고정 기사 16",
+      "source": "Google News RSS - 반도체",
+      "date": "2026-10-17T10:00:00",
+      "url": "https://news.example.com/rss/016"
+    }
+  ],
+  "evidenceByDay": {
+    "2026-10-17": [
+      {
+        "id": "article-b81b01df734bfb1c",
+        "title": "고정 기사 16",
+        "summary": "고정 기사 16의 요약입니다.",
+        "source": "Google News RSS - 반도체",
+        "publishedAt": "2026-10-17T10:00:00+09:00",
+        "sourceUrl": "https://news.example.com/rss/016"
+      }
+    ],
+    "2026-10-22": [
+      {
+        "id": "article-a2725bf9684b3e85",
+        "title": "고정 기사 5",
+        "summary": "고정 기사 5의 요약입니다.",
+        "source": "네이버 뉴스",
+        "publishedAt": "2026-10-22T13:00:00+09:00",
+        "sourceUrl": "https://news.example.com/naver/005"
+      },
+      {
+        "id": "article-2a256716ce390520",
+        "title": "고정 기사 4",
+        "summary": "고정 기사 4의 요약입니다.",
+        "source": "Google News RSS - 반도체",
+        "publishedAt": "2026-10-22T12:05:00+09:00",
+        "sourceUrl": "https://news.example.com/rss/004"
+      },
+      {
+        "id": "article-277039c1a7b751af",
+        "title": "고정 기사 1",
+        "summary": "고정 기사 1의 요약입니다.",
+        "source": "네이버 뉴스",
+        "publishedAt": "2026-10-22T08:00:00+09:00",
+        "sourceUrl": "https://news.example.com/naver/001"
+      }
+    ],
+    "2026-10-23": [
+      {
+        "id": "article-f860ec6edad33054",
+        "title": "고정 기사 13",
+        "summary": "고정 기사 13의 요약입니다.",
+        "source": "다음 뉴스",
+        "publishedAt": "2026-10-23T20:00:00+09:00",
+        "sourceUrl": "https://news.example.com/daum/013"
+      },
+      {
+        "id": "article-50c1bb0696ff7508",
+        "title": "고정 기사 11",
+        "summary": "고정 기사 11의 요약입니다.",
+        "source": "네이버 뉴스",
+        "publishedAt": "2026-10-23T14:00:00+09:00",
+        "sourceUrl": "https://news.example.com/naver/011"
+      },
+      {
+        "id": "article-3057e72028f5e508",
+        "title": "고정 기사 10",
+        "summary": "고정 기사 10의 요약입니다.",
+        "source": "네이버 뉴스",
+        "publishedAt": "2026-10-23T12:10:00+09:00",
+        "sourceUrl": "https://news.example.com/naver/010"
+      }
+    ],
+    "2026-10-24": [
+      {
+        "id": "article-deb9d8ffad190ff3",
+        "title": "고정 기사 14",
+        "summary": "고정 기사 14의 요약입니다.",
+        "source": "다음 뉴스",
+        "publishedAt": "2026-10-24T07:30:00+09:00",
+        "sourceUrl": "https://news.example.com/daum/014"
+      }
+    ]
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "generatedAt": "2026-10-24T03:00:00Z",
+  "runs": [
+    {
+      "runId": "33333333-3333-4333-8333-333333333333",
+      "startedAt": "2026-10-24T00:17:00Z",
+      "completedAt": "2026-10-24T00:20:30Z",
+      "outcome": "SUCCESS",
+      "trigger": "workflow_dispatch",
+      "selectedCount": 8,
+      "writtenCount": 8,
+      "previouslySeenCount": 0,
+      "validationRejectedCount": 0,
+      "reconciliationOk": true,
+      "durationMs": 61000,
+      "channels": [
+        {
+          "channel": "naver",
+          "outcome": "SUCCESS",
+          "validatedArticleCount": 4
+        },
+        {
+          "channel": "daum",
+          "outcome": "SUCCESS",
+          "validatedArticleCount": 2
+        },
+        {
+          "channel": "rss",
+          "outcome": "SUCCESS",
+          "validatedArticleCount": 2
+        }
+      ]
+    },
+    {
+      "runId": "44444444-4444-4444-8444-444444444444",
+      "startedAt": "2026-10-23T15:17:00Z",
+      "completedAt": "2026-10-23T15:18:10Z",
+      "outcome": "EMPTY",
+      "trigger": "schedule",
+      "selectedCount": 0,
+      "writtenCount": 0,
+      "previouslySeenCount": 0,
+      "validationRejectedCount": 0,
+      "reconciliationOk": true,
+      "durationMs": 61000,
+      "channels": [
+        {
+          "channel": "naver",
+          "outcome": "EMPTY",
+          "validatedArticleCount": 0
+        },
+        {
+          "channel": "daum",
+          "outcome": "EMPTY",
+          "validatedArticleCount": 0
+        },
+        {
+          "channel": "rss",
+          "outcome": "EMPTY",
+          "validatedArticleCount": 0
+        }
+      ]
+    },
+    {
+      "runId": "22222222-2222-4222-8222-222222222222",
+      "startedAt": "2026-10-23T03:17:00Z",
+      "completedAt": "2026-10-23T03:20:30Z",
+      "outcome": "PARTIAL_FAILURE",
+      "trigger": "schedule",
+      "selectedCount": 6,
+      "writtenCount": 6,
+      "previouslySeenCount": 0,
+      "validationRejectedCount": 1,
+      "reconciliationOk": true,
+      "durationMs": 61000,
+      "channels": [
+        {
+          "channel": "naver",
+          "outcome": "SUCCESS",
+          "validatedArticleCount": 3
+        },
+        {
+          "channel": "daum",
+          "outcome": "FAILURE",
+          "validatedArticleCount": 0
+        },
+        {
+          "channel": "rss",
+          "outcome": "SUCCESS",
+          "validatedArticleCount": 3
+        }
+      ]
+    },
+    {
+      "runId": "11111111-1111-4111-8111-111111111111",
+      "startedAt": "2026-10-22T03:17:00Z",
+      "completedAt": "2026-10-22T03:20:30Z",
+      "outcome": "SUCCESS",
+      "trigger": "schedule",
+      "selectedCount": 4,
+      "writtenCount": 4,
+      "previouslySeenCount": 0,
+      "validationRejectedCount": 0,
+      "reconciliationOk": true,
+      "durationMs": 61000,
+      "channels": [
+        {
+          "channel": "naver",
+          "outcome": "SUCCESS",
+          "validatedArticleCount": 2
+        },
+        {
+          "channel": "daum",
+          "outcome": "SUCCESS",
+          "validatedArticleCount": 0
+        },
+        {
+          "channel": "rss",
+          "outcome": "SUCCESS",
+          "validatedArticleCount": 2
+        }
+      ]
+    }
+  ]
+}

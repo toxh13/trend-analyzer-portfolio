@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "trends/all.json, trends/category/<slug>.json (최대 20), trends/popular.json, trends/surging/*.json (최대 50)",
+  "$ref": "common.schema.json#/$defs/trendList",
+  "maxItems": 50
+}

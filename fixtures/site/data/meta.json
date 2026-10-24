@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-24T03:00:00Z",
+  "asOf": "2026-10-24T12:00:00",
+  "timezone": "Asia/Seoul",
+  "lastRun": {
+    "runId": "33333333-3333-4333-8333-333333333333",
+    "completedAt": "2026-10-24T00:20:30Z",
+    "outcome": "SUCCESS"
+  },
+  "lastSuccessfulRunAt": "2026-10-24T00:20:30Z",
+  "freshness": "ok",
+  "freshnessHours": 2.66,
+  "counts": {
+    "articles30d": 16,
+    "keywords30d": 6,
+    "runs7d": 4
+  },
+  "codeVersion": "fixture"
+}

@@ -1,0 +1,249 @@
+{
+  "schemaVersion": 1,
+  "keyword": "환율",
+  "slug": "7dbb5ceb4870cdb8",
+  "aliases": [],
+  "searchKeywords": [
+    "환율"
+  ],
+  "timezone": "Asia/Seoul",
+  "today": "2026-10-24",
+  "generatedAt": "2026-10-24T03:00:00Z",
+  "daily": [
+    {
+      "day": "2026-09-25",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-09-26",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-09-27",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-09-28",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-09-29",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-09-30",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-01",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-02",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-03",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-04",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-05",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-06",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-07",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-08",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-09",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-10",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-11",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-12",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-13",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-14",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-15",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-16",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-17",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-18",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-19",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-20",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-21",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-22",
+      "articleCount": 2,
+      "weightedScore": 2.1
+    },
+    {
+      "day": "2026-10-23",
+      "articleCount": 2,
+      "weightedScore": 2.133
+    },
+    {
+      "day": "2026-10-24",
+      "articleCount": 1,
+      "weightedScore": 1.0
+    }
+  ],
+  "articles": [
+    {
+      "id": "article-bbe75660827a0582",
+      "title": "고정 기사 15",
+      "source": "Google News RSS - 환율",
+      "date": "2026-10-24T08:00:00",
+      "url": "https://news.example.com/rss/015"
+    },
+    {
+      "id": "article-b40dd9218d88446a",
+      "title": "고정 기사 9",
+      "source": "Google News RSS - 환율",
+      "date": "2026-10-23T09:00:00",
+      "url": "https://news.example.com/rss/009"
+    },
+    {
+      "id": "article-9dfbaef87bcb2e3b",
+      "title": "고정 기사 8",
+      "source": "Google News RSS - 환율",
+      "date": "2026-10-23T07:00:00",
+      "url": "https://news.example.com/rss/008"
+    },
+    {
+      "id": "article-46ec2c47c1959f31",
+      "title": "고정 기사 7",
+      "source": "Google News RSS - 환율",
+      "date": "2026-10-22T20:00:00",
+      "url": "https://news.example.com/rss/007"
+    },
+    {
+      "id": "article-ab592c34ccb7d0a3",
+      "title": "고정 기사 3",
+      "source": "Google News RSS - 환율",
+      "date": "2026-10-22T10:00:00",
+      "url": "https://news.example.com/rss/003"
+    }
+  ],
+  "evidenceByDay": {
+    "2026-10-22": [
+      {
+        "id": "article-46ec2c47c1959f31",
+        "title": "고정 기사 7",
+        "summary": "고정 기사 7의 요약입니다.",
+        "source": "Google News RSS - 환율",
+        "publishedAt": "2026-10-22T20:00:00+09:00",
+        "sourceUrl": "https://news.example.com/rss/007"
+      },
+      {
+        "id": "article-ab592c34ccb7d0a3",
+        "title": "고정 기사 3",
+        "summary": "고정 기사 3의 요약입니다.",
+        "source": "Google News RSS - 환율",
+        "publishedAt": "2026-10-22T10:00:00+09:00",
+        "sourceUrl": "https://news.example.com/rss/003"
+      }
+    ],
+    "2026-10-23": [
+      {
+        "id": "article-b40dd9218d88446a",
+        "title": "고정 기사 9",
+        "summary": "고정 기사 9의 요약입니다.",
+        "source": "Google News RSS - 환율",
+        "publishedAt": "2026-10-23T09:00:00+09:00",
+        "sourceUrl": "https://news.example.com/rss/009"
+      },
+      {
+        "id": "article-9dfbaef87bcb2e3b",
+        "title": "고정 기사 8",
+        "summary": "고정 기사 8의 요약입니다.",
+        "source": "Google News RSS - 환율",
+        "publishedAt": "2026-10-23T07:00:00+09:00",
+        "sourceUrl": "https://news.example.com/rss/008"
+      }
+    ],
+    "2026-10-24": [
+      {
+        "id": "article-bbe75660827a0582",
+        "title": "고정 기사 15",
+        "summary": "고정 기사 15의 요약입니다.",
+        "source": "Google News RSS - 환율",
+        "publishedAt": "2026-10-24T08:00:00+09:00",
+        "sourceUrl": "https://news.example.com/rss/015"
+      }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "keyword-인공지능",
+    "keyword": "인공지능",
+    "category": "IT/과학",
+    "score": 2.4,
+    "mention_count": 3,
+    "rank": 1,
+    "changeType": "up",
+    "changeValue": 2
+  },
+  {
+    "id": "keyword-클라우드",
+    "keyword": "클라우드",
+    "category": "IT/과학",
+    "score": 2.0,
+    "mention_count": 2,
+    "rank": 2,
+    "changeType": "up",
+    "changeValue": 2
+  },
+  {
+    "id": "keyword-반도체",
+    "keyword": "반도체",
+    "category": "IT/과학",
+    "score": 1.8,
+    "mention_count": 3,
+    "rank": 3,
+    "changeType": "up",
+    "changeValue": 1
+  }
+]
