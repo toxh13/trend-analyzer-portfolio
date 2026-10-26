@@ -1,0 +1,18 @@
+# v2 수집 배치(batch_cli.py) 전용 최소 의존성입니다. Python 3.12 기준으로 확인했습니다.
+# v1 Flask 서비스·Selenium·임베딩 모델·DB 드라이버는 배치에서 쓰지 않으므로 넣지 않습니다.
+# KoNLPy(Okt)는 JVM이 필요합니다. GitHub Actions에서는 Java 21을 함께 설치합니다.
+beautifulsoup4==4.15.0
+certifi==2026.6.17
+charset-normalizer==3.4.7
+feedparser==6.0.11
+idna==3.18
+jpype1==1.7.1
+konlpy==0.6.0
+lxml==6.1.1
+numpy==2.4.6
+packaging==26.2
+requests==2.34.2
+sgmllib3k==1.0.0
+soupsieve==2.8.4
+typing_extensions==4.15.0
+urllib3==2.7.0
