@@ -1,0 +1,7 @@
+trend_analyzer:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: "{{ env_var('DBT_DUCKDB_PATH', 'target/trend.duckdb') }}"
+      threads: 1

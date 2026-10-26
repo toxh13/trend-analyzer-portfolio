@@ -1,0 +1,23 @@
+{
+  "java": [
+    "backend-spring/src/test/java/com/example/backendspring/service/TrendServiceTest.java#getTopMentionedTrendsExcludesPreviousOnlyMetrics"
+  ],
+  "asOf": "2026-07-18T15:30:00",
+  "adapted": null,
+  "snapshot": null,
+  "checks": [
+    {
+      "file": "trends/popular.json",
+      "path": [],
+      "length": 1
+    },
+    {
+      "file": "trends/popular.json",
+      "path": [
+        0,
+        "keyword"
+      ],
+      "equals": "LLM"
+    }
+  ]
+}

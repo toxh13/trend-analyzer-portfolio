@@ -1,0 +1,24 @@
+{
+  "java": [
+    "backend-spring/src/test/java/com/example/backendspring/service/TrendAnalysticServiceTest.java#analyzeAndUpdateTrendsUsesCanonicalArticleGrainAndNonOverlappingWindows"
+  ],
+  "asOf": "2026-07-18T15:30:00",
+  "adapted": null,
+  "snapshot": [
+    {
+      "keyword": "인공지능",
+      "category": "IT",
+      "mention_count": 1,
+      "velocity_score": 0,
+      "hotness_score": 0.4
+    },
+    {
+      "keyword": "인공지능",
+      "category": "경제",
+      "mention_count": 1,
+      "velocity_score": 1,
+      "hotness_score": 1.0
+    }
+  ],
+  "checks": []
+}

@@ -1,0 +1,46 @@
+{
+  "java": [
+    "backend-spring/src/test/java/com/example/backendspring/service/TrendServiceTest.java#getArticlesContainingKeywordTest"
+  ],
+  "asOf": "2026-07-18T15:30:00",
+  "adapted": "Java 는 두 기사 모두 LocalDateTime.now() 라 mock 반환 순서로 정렬을 확인한다. 여기서는 'AI 플랫폼 출시' 를 더 늦게 발행해 같은 순서가 정렬로 나오게 했다.",
+  "snapshot": null,
+  "checks": [
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "searchKeywords"
+      ],
+      "equals": [
+        "AI",
+        "Artificial Intelligence",
+        "인공지능"
+      ]
+    },
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "articles"
+      ],
+      "length": 2
+    },
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "articles",
+        0,
+        "title"
+      ],
+      "equals": "AI 플랫폼 출시"
+    },
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "articles",
+        1,
+        "title"
+      ],
+      "equals": "인공지능 투자 확대"
+    }
+  ]
+}

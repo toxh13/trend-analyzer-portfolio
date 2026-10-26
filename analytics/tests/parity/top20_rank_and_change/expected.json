@@ -1,0 +1,79 @@
+{
+  "java": [
+    "backend-spring/src/test/java/com/example/backendspring/service/TrendServiceTest.java#getTop20TrendTest"
+  ],
+  "asOf": "2026-07-18T15:30:00",
+  "adapted": "mock hotness(95.5, 88.0)는 계산식으로 만들 수 없어 같은 순위·변화 방향이 나오는 기사 수로 바꿨다 (AI cur 3/prev 1, Crypto cur 1/prev 2).",
+  "snapshot": null,
+  "checks": [
+    {
+      "file": "trends/all.json",
+      "path": [],
+      "length": 2
+    },
+    {
+      "file": "trends/all.json",
+      "path": [
+        0,
+        "rank"
+      ],
+      "equals": 1
+    },
+    {
+      "file": "trends/all.json",
+      "path": [
+        0,
+        "keyword"
+      ],
+      "equals": "AI"
+    },
+    {
+      "file": "trends/all.json",
+      "path": [
+        0,
+        "changeType"
+      ],
+      "equals": "up"
+    },
+    {
+      "file": "trends/all.json",
+      "path": [
+        0,
+        "changeValue"
+      ],
+      "equals": 2
+    },
+    {
+      "file": "trends/all.json",
+      "path": [
+        1,
+        "rank"
+      ],
+      "equals": 2
+    },
+    {
+      "file": "trends/all.json",
+      "path": [
+        1,
+        "keyword"
+      ],
+      "equals": "Crypto"
+    },
+    {
+      "file": "trends/all.json",
+      "path": [
+        1,
+        "changeType"
+      ],
+      "equals": "down"
+    },
+    {
+      "file": "trends/all.json",
+      "path": [
+        1,
+        "changeValue"
+      ],
+      "equals": 1
+    }
+  ]
+}

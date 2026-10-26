@@ -1,0 +1,17 @@
+{
+  "java": [
+    "backend-spring/src/test/java/com/example/backendspring/service/TrendAnalysticServiceTest.java#analyzeAndUpdateTrendsStoresActualArticleCountDecrease"
+  ],
+  "asOf": "2026-07-18T15:30:00",
+  "adapted": null,
+  "snapshot": [
+    {
+      "keyword": "미국",
+      "category": "경제",
+      "mention_count": 7,
+      "velocity_score": -4,
+      "hotness_score": 0.4
+    }
+  ],
+  "checks": []
+}

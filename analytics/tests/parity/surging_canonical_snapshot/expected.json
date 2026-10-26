@@ -1,0 +1,47 @@
+{
+  "java": [
+    "backend-spring/src/test/java/com/example/backendspring/service/TrendServiceTest.java#getTopSurgingTrendsUsesCanonicalSnapshot"
+  ],
+  "asOf": "2026-07-18T15:30:00",
+  "adapted": "mock 클라우드(mention 2, velocity 3)는 previous 가 음수여야 해서 만들 수 없다. mention 3/previous 0 으로 바꿔도 단언(순서 클라우드 → 인공지능, 인공지능 mention 7·changeValue 1)은 같다.",
+  "snapshot": null,
+  "checks": [
+    {
+      "file": "trends/surging/all.json",
+      "path": [],
+      "length": 2
+    },
+    {
+      "file": "trends/surging/all.json",
+      "path": [
+        0,
+        "keyword"
+      ],
+      "equals": "클라우드"
+    },
+    {
+      "file": "trends/surging/all.json",
+      "path": [
+        1,
+        "keyword"
+      ],
+      "equals": "인공지능"
+    },
+    {
+      "file": "trends/surging/all.json",
+      "path": [
+        1,
+        "mention_count"
+      ],
+      "equals": 7
+    },
+    {
+      "file": "trends/surging/all.json",
+      "path": [
+        1,
+        "changeValue"
+      ],
+      "equals": 1
+    }
+  ]
+}

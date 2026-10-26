@@ -1,0 +1,27 @@
+{
+  "java": [
+    "backend-spring/src/test/java/com/example/backendspring/service/TrendServiceTest.java#compareKeywordHistoryRejectsSameCanonicalKeyword",
+    "backend-spring/src/test/java/com/example/backendspring/service/TrendEvidenceServiceTest.java#getHistoryEvidenceRejectsSameCanonicalKeyword"
+  ],
+  "asOf": "2026-07-18T15:30:00",
+  "adapted": "거부 자체(400)는 static 어댑터(작업 C)가 한다. 여기서는 판단 근거인 aliasToCanonical 이 'AI' 와 ' 인공지능 ' 을 같은 대표 키워드로 해석하는지 확인한다.",
+  "snapshot": null,
+  "checks": [
+    {
+      "file": "keywords/index.json",
+      "path": [
+        "aliasToCanonical",
+        "ai"
+      ],
+      "equals": "인공지능"
+    },
+    {
+      "file": "keywords/index.json",
+      "path": [
+        "aliasToCanonical",
+        "인공지능"
+      ],
+      "equals": "인공지능"
+    }
+  ]
+}

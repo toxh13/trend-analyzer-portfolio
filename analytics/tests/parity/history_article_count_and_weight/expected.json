@@ -1,0 +1,32 @@
+{
+  "java": [
+    "backend-spring/src/test/java/com/example/backendspring/service/TrendServiceTest.java#getKeywordHistorySeparatesArticleCountAndWeightedScore"
+  ],
+  "asOf": "2026-07-18T15:30:00",
+  "adapted": null,
+  "snapshot": null,
+  "checks": [
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "daily",
+        {
+          "day": "2026-07-18"
+        },
+        "articleCount"
+      ],
+      "equals": 2
+    },
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "daily",
+        {
+          "day": "2026-07-18"
+        },
+        "weightedScore"
+      ],
+      "equals": 2.16
+    }
+  ]
+}
