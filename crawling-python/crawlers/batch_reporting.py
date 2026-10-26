@@ -39,7 +39,7 @@ def build_completed_payload(
         "httpFailedCount": summary.http_failed,
         "transportFailedCount": summary.transport_failed,
         "durationMs": summary.duration_ms,
-        "channels": [_channel_payload(result) for result in crawl_results],
+        "channels": [build_channel_payload(result) for result in crawl_results],
     }
 
 
@@ -67,7 +67,8 @@ def _report_with_limited_retry(session, endpoint: str, payload: dict, phase: str
     return False
 
 
-def _channel_payload(result: CrawlResult) -> dict:
+def build_channel_payload(result: CrawlResult) -> dict:
+    """채널 결과 형식은 v1 완료 보고 API와 v2 run JSON이 함께 씁니다."""
     return {
         "channel": result.channel,
         "outcome": result.outcome.upper(),
