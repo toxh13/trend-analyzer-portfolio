@@ -8,6 +8,7 @@ import TrendRankingList from './TrendRankingList';
 import ArticleSidebar from './ArticleSidebar';
 import VolatilityPanel from './VolatilityPanel';
 import TrendChatbot from './TrendChatbot';
+import { isStaticMode } from '../config/dataMode';
 import { fetchKeywordArticles, fetchKeywordHistory, fetchTrendStats, fetchTrends } from '../api/trendApi';
 import { buildTrendStats, CATEGORIES, CATEGORY_META } from '../utils/trendUtils';
 
@@ -174,7 +175,8 @@ export default function TrendDashboard() {
                                     onClose={handleCloseSidebar}
                                 />
 
-                                <TrendChatbot trends={filteredTrends} />
+                                {/* 챗봇은 서버가 필요해 static 모드에서는 숨깁니다. */}
+                                {!isStaticMode() && <TrendChatbot trends={filteredTrends} />}
                             </div>
                         </section>
                     </main>

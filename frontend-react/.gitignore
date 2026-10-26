@@ -11,6 +11,9 @@
 # production
 /build
 
+# v2 static 모드 개발용 정적 JSON (npm run start:static 이 fixtures에서 복사)
+/public/data
+
 # misc
 .DS_Store
 .env.local

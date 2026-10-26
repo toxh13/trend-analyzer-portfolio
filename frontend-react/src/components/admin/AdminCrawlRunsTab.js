@@ -9,7 +9,7 @@ const STATUS_PRESENTATION = {
     FAILURE: { label: '배치 실패', className: 'bg-rose-50 text-rose-700' },
 };
 
-function StatusBadge({ outcome }) {
+export function StatusBadge({ outcome }) {
     const presentation = STATUS_PRESENTATION[outcome] || {
         label: outcome || '상태 미확인',
         className: 'bg-slate-100 text-slate-600',

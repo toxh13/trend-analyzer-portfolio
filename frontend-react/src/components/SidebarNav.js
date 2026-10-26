@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { BarChart3, FileText, Home, Layers, Menu, Search, Tags, User } from 'lucide-react';
+import { Activity, BarChart3, FileText, Home, Layers, Menu, Search, Tags, User } from 'lucide-react';
+import { isStaticMode } from '../config/dataMode';
 
 const MENU_ITEMS = [
     { id: 'popular-keywords', label: '인기 키워드', icon: Home, to: '/' },
@@ -9,6 +10,12 @@ const MENU_ITEMS = [
     { id: 'keyword-compare', label: '키워드 비교', icon: BarChart3, to: '/history' },
     { id: 'articles', label: '관련 기사', icon: FileText, to: '/articles' },
     { id: 'my-info', label: '내정보', icon: User, to: '/my-info' },
+];
+
+// static 모드에는 로그인 서버가 없으므로 내정보를 빼고 읽기 전용 운영 현황을 넣습니다.
+const STATIC_MENU_ITEMS = [
+    ...MENU_ITEMS.filter((item) => item.id !== 'my-info'),
+    { id: 'operations-status', label: '운영 현황', icon: Activity, to: '/status' },
 ];
 
 export default function SidebarNav({ isOpen, onToggle, stats }) {
@@ -20,6 +27,7 @@ export default function SidebarNav({ isOpen, onToggle, stats }) {
 
     const trackedKeywordCount = stats?.trackedKeywords ?? stats?.tracked ?? 0;
     const windowHours = stats?.windowHours ?? 24;
+    const menuItems = isStaticMode() ? STATIC_MENU_ITEMS : MENU_ITEMS;
 
     return (
         <>
@@ -65,7 +73,7 @@ export default function SidebarNav({ isOpen, onToggle, stats }) {
                 </div>
 
                 <nav className="flex-1 space-y-1 px-3 py-4">
-                    {MENU_ITEMS.map((item) => {
+                    {menuItems.map((item) => {
                         const Icon = item.icon;
 
                         return (

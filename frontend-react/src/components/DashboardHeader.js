@@ -1,6 +1,7 @@
 import React from 'react';
 import { Menu, RefreshCw } from 'lucide-react';
 import AuthMenu from './AuthMenu';
+import { isStaticMode } from '../config/dataMode';
 
 export default function DashboardHeader({ updatedAt, isRefreshing = false, onRefresh, onToggleMenu }) {
     return (
@@ -19,7 +20,7 @@ export default function DashboardHeader({ updatedAt, isRefreshing = false, onRef
                     )}
 
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 overflow-hidden">
-                        <img src="/logo.png" alt="logo" className="h-8 w-8 object-cover" />
+                        <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="logo" className="h-8 w-8 object-cover" />
                     </div>
 
                     <div className="min-w-0">
@@ -52,7 +53,8 @@ export default function DashboardHeader({ updatedAt, isRefreshing = false, onRef
                         </span>
                         마지막 전체 조회 · {updatedAt || '--:--'}
                     </div>
-                    <AuthMenu />
+                    {/* static 모드에는 로그인 서버가 없어 로그인 메뉴를 숨깁니다. */}
+                    {!isStaticMode() && <AuthMenu />}
                 </div>
             </div>
         </header>
