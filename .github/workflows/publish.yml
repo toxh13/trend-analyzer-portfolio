@@ -1,0 +1,108 @@
+# v2 배포: data 브랜치 원천 파일 → dbt build·정적 JSON → React static build → GitHub Pages.
+# 설계: docs/v2/DESIGN.md 7절, 운영: docs/v2/RUNBOOK.md
+# workflow_run·예약 실행은 이 파일이 기본 브랜치(main)에 있어야 동작합니다.
+name: publish
+
+on:
+  workflow_run:
+    workflows: [ingest]
+    types: [completed]  # 수집이 실패해도 배포해서 freshness(stale·down)를 반영
+  schedule:
+    - cron: '47 15 * * *'  # 매일 서울 00:47. 수집이 멈춰도 날짜·신선도는 갱신
+  workflow_dispatch:
+    inputs:
+      as_of:
+        description: '지표 기준 시각 (서울, YYYY-MM-DDTHH:MM:SS). 비우면 현재'
+        required: false
+        default: ''
+        type: string
+
+permissions: {}
+
+# Pages 배포는 순서대로 하나씩. 진행 중인 배포는 취소하지 않습니다.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # 취소된 수집 뒤에는 배포하지 않음
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: data 브랜치 체크아웃
+        uses: actions/checkout@v7
+        with:
+          ref: data
+          path: data
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: analytics/requirements*.txt
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend-react/package-lock.json
+
+      - name: 의존성 설치
+        run: |
+          pip install -r analytics/requirements.txt
+          npm ci --prefix frontend-react --no-audit --no-fund
+
+      - name: 정적 JSON + static 빌드 (실패하면 배포하지 않음)
+        env:
+          AS_OF: ${{ inputs.as_of }}
+          CODE_VERSION: ${{ github.sha }}
+        run: bash scripts/ops/build_pages.sh data _site
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
+
+  notify:
+    needs: [build, deploy]
+    if: ${{ always() && (needs.build.result == 'success' || needs.build.result == 'failure') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/ops
+
+      - name: pipeline-failure Issue 갱신
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          STATUS: ${{ needs.deploy.result == 'success' && 'success' || 'failure' }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SUMMARY: trigger=${{ github.event_name }} build=${{ needs.build.result }} deploy=${{ needs.deploy.result }} ingest=${{ github.event.workflow_run.conclusion || '-' }}
+        run: python3 scripts/ops/alert_issue.py "$STATUS" --workflow publish --run-url "$RUN_URL" --summary "$SUMMARY"

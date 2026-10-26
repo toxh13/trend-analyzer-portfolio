@@ -1,0 +1,236 @@
+# v2 CI: 계약 검증, 운영 스크립트, 수집기·analytics·프론트 테스트, 오프라인 e2e.
+# 작업 A·B 의 산출물이 아직 없으면 해당 job 은 건너뜁니다(건너뜀 = 통과).
+# job 의 if 에서는 hashFiles 를 쓸 수 없어서(체크아웃 전), detect job 이 hashFiles(...) 결과를 출력으로 넘깁니다.
+# 운영: docs/v2/RUNBOOK.md
+name: ci-v2
+
+on:
+  pull_request:
+  push:
+    branches:
+      - 'claude/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-v2-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect:
+    name: 작업 산출물 확인
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      collector: ${{ steps.files.outputs.collector }}
+      analytics: ${{ steps.files.outputs.analytics }}
+      e2e: ${{ steps.files.outputs.e2e }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - id: files
+        env:
+          BATCH_REQUIREMENTS: ${{ hashFiles('crawling-python/requirements-batch.txt') != '' }}
+          BATCH_CLI: ${{ hashFiles('crawling-python/batch_cli.py') != '' }}
+          BUILD_SITE: ${{ hashFiles('analytics/build_site.py') != '' }}
+        run: |
+          {
+            echo "collector=$BATCH_REQUIREMENTS"
+            echo "analytics=$BUILD_SITE"
+            # 수집기와 build_site 가 모두 있어야 e2e 가 의미 있음
+            if [ "$BATCH_CLI" = true ] && [ "$BUILD_SITE" = true ]; then echo "e2e=true"; else echo "e2e=false"; fi
+          } | tee -a "$GITHUB_OUTPUT"
+
+  contracts:
+    name: 계약 검증 (고정 데이터)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: pip install jsonschema==4.26.0
+      - run: python contracts/validate.py --raw-root fixtures/raw-root --site-dir fixtures/site/data
+
+  ops:
+    name: 운영 스크립트·워크플로 검사
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: read  # alert_issue.py --dry-run 이 열린 Issue 를 실제로 조회
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: pip install pytest==9.1.1 jsonschema==4.26.0 actionlint-py==1.7.12.25 shellcheck-py==0.11.0.1
+      - name: pytest scripts/ops
+        run: python -m pytest -q scripts/ops
+      - name: actionlint
+        run: actionlint
+      - name: shellcheck
+        run: shellcheck scripts/ops/*.sh
+      - name: dry-run — seen URL (고정 데이터)
+        run: python scripts/ops/build_seen_urls.py --data-dir fixtures/raw-root --today 2026-10-24 --output "$RUNNER_TEMP/seen_urls.txt"
+      - name: dry-run — 실패 알림 (조회만, 쓰기 없음)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python scripts/ops/alert_issue.py failure --workflow ingest --run-url "$RUN_URL" --summary ci-dry-run --dry-run
+          python scripts/ops/alert_issue.py success --workflow publish --run-url "$RUN_URL" --dry-run
+
+  collector:
+    name: 수집기 pytest (작업 A)
+    needs: detect
+    if: ${{ needs.detect.outputs.collector == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: crawling-python/requirements*.txt
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: 의존성 설치
+        working-directory: crawling-python
+        run: |
+          pip install -r requirements-batch.txt pytest==9.1.1
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+      - working-directory: crawling-python
+        run: python -m pytest -q
+
+  analytics:
+    name: analytics pytest + 정답 비교 (작업 B)
+    needs: detect
+    if: ${{ needs.detect.outputs.analytics == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: analytics/requirements*.txt
+      - run: pip install -r analytics/requirements.txt pytest==9.1.1
+      - name: pytest analytics
+        run: python -m pytest -q analytics
+      - name: 고정 데이터 → 정적 JSON
+        run: >-
+          python analytics/build_site.py --raw-root fixtures/raw-root --seeds-dir fixtures/seeds
+          --as-of 2026-10-24T12:00:00 --code-version fixture --out "$RUNNER_TEMP/site"
+      - name: 정답(fixtures/site/data)과 비교 (generatedAt 제외)
+        run: python scripts/ops/compare_site.py fixtures/site/data "$RUNNER_TEMP/site"
+      - name: 빈 raw-root 에서도 성공
+        run: |
+          mkdir -p "$RUNNER_TEMP/empty-raw/raw"
+          python analytics/build_site.py --raw-root "$RUNNER_TEMP/empty-raw" --seeds-dir fixtures/seeds --out "$RUNNER_TEMP/empty-site"
+          python -c 'import json,sys; m=json.load(open(sys.argv[1])); assert m["freshness"]=="down", m["freshness"]' "$RUNNER_TEMP/empty-site/meta.json"
+
+  frontend:
+    name: 프론트 test + static build (작업 C)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend-react
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend-react/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx react-scripts test --watchAll=false
+      - name: static build
+        env:
+          REACT_APP_DATA_MODE: static
+          PUBLIC_URL: /trend-analyzer-portfolio
+        run: npm run build
+
+  e2e:
+    name: 오프라인 e2e (ingest·publish dry-run)
+    needs: detect
+    if: ${{ needs.detect.outputs.e2e == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            crawling-python/requirements*.txt
+            analytics/requirements*.txt
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend-react/package-lock.json
+      - name: 의존성 설치
+        run: |
+          pip install -r crawling-python/requirements-batch.txt -r analytics/requirements.txt jsonschema==4.26.0
+          npm ci --prefix frontend-react --no-audit --no-fund
+      - name: 가짜 원격(bare 저장소)에 data 브랜치 초기화
+        env:
+          DATA_REMOTE: ${{ runner.temp }}/remote.git
+        run: |
+          git init -q --bare "$DATA_REMOTE"
+          git config --global user.name "ci"
+          git config --global user.email "ci@example.com"
+          bash scripts/ops/init_data_branch.sh
+          bash scripts/ops/init_data_branch.sh  # 두 번째는 아무것도 안 함
+          git clone -q -b data "$DATA_REMOTE" "$RUNNER_TEMP/data"
+      - name: ingest.sh (--source-fixture, 네트워크 없음)
+        env:
+          TRIGGER: local
+          CODE_VERSION: ${{ github.sha }}
+        run: |
+          fixture="$(find crawling-python/tests/fixtures -maxdepth 1 -name '*source*.json' 2>/dev/null | sort | head -n 1)"
+          if [ -z "$fixture" ]; then
+            echo "::error::crawling-python/tests/fixtures/*source*.json 이 없습니다 (WORKSTREAMS A 완료 기준)"
+            exit 1
+          fi
+          echo "source fixture: $fixture"
+          SOURCE_FIXTURE="$PWD/$fixture" bash scripts/ops/ingest.sh "$RUNNER_TEMP/data"
+          git -C "$RUNNER_TEMP/remote.git" log --format=%s data
+      - name: 커밋된 원천 파일 계약 검증
+        run: |
+          git clone -q -b data "$RUNNER_TEMP/remote.git" "$RUNNER_TEMP/data-check"
+          python contracts/validate.py --raw-root "$RUNNER_TEMP/data-check"
+      - name: build_pages.sh (build_site → 계약 검증 → static build)
+        run: bash scripts/ops/build_pages.sh "$RUNNER_TEMP/data-check" "$RUNNER_TEMP/_site"
+      - name: 배포 디렉터리 확인
+        run: |
+          test -f "$RUNNER_TEMP/_site/index.html"
+          test -f "$RUNNER_TEMP/_site/data/meta.json"
+          python contracts/validate.py --site-dir "$RUNNER_TEMP/_site/data"
