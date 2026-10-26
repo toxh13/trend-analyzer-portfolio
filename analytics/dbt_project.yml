@@ -1,0 +1,30 @@
+name: trend_analyzer
+version: "2.0.0"
+config-version: 2
+profile: trend_analyzer
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+# 단일 테스트(singular test)는 pytest 코드와 섞이지 않게 tests/dbt 에 둔다
+test-paths: ["tests/dbt"]
+# alias·차단 키워드 CSV 는 --seeds-dir 로 경로를 바꿀 수 있어야 해서 dbt seed 대신 read_csv 로 읽는다
+seed-paths: ["dbt_seeds_unused"]
+analysis-paths: []
+snapshot-paths: []
+target-path: target
+clean-targets: ["target"]
+
+vars:
+  # 지표 기준 시각 (Asia/Seoul 로컬). build_site.py 가 항상 넘긴다
+  as_of: "2026-10-24T12:00:00"
+  # true 면 마지막 성공 실행이 24시간을 넘었을 때 build 를 실패시킨다 (기본은 경고 + meta.freshness=down)
+  strict_freshness: false
+
+models:
+  trend_analyzer:
+    staging:
+      +materialized: view
+    intermediate:
+      +materialized: view
+    marts:
+      +materialized: table

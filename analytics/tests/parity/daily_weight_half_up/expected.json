@@ -1,0 +1,21 @@
+{
+  "java": [
+    "TrendService.roundToThreeDecimals (코드: Math.round(value * 1000.0) / 1000.0)"
+  ],
+  "asOf": "2026-07-18T15:30:00",
+  "adapted": "Java 테스트에는 없는 규칙이라 v1 코드에서 기대값을 계산했다. occurrence 16 기사 3건 → 3 × 1.1875 = 3.5625 → Math.round → 3.563 (Python round 는 3.562).",
+  "snapshot": null,
+  "checks": [
+    {
+      "file": "keywords/{keyword:LLM}.json",
+      "path": [
+        "daily",
+        {
+          "day": "2026-07-18"
+        },
+        "weightedScore"
+      ],
+      "equals": 3.563
+    }
+  ]
+}

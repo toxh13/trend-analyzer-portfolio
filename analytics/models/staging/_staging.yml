@@ -1,0 +1,78 @@
+version: 2
+
+models:
+  - name: stg_article_lines
+    description: 원천 JSONL 의 모든 줄 (중복 URL 포함)
+    columns:
+      - name: run_id
+        data_tests: [not_null]
+      - name: source_url
+        data_tests: [not_null]
+      - name: channel
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["naver", "daum", "rss"]
+      - name: published_at
+        description: 형식이 YYYY-MM-DDTHH:MM:SS 가 아니면 null 이 되어 테스트가 실패한다
+        data_tests: [not_null]
+      - name: crawled_at
+        data_tests: [not_null]
+
+  - name: stg_articles
+    description: sourceUrl 기준 최초 수집 행만 남긴 기사
+    columns:
+      - name: source_url
+        data_tests: [unique, not_null]
+      - name: article_id
+        data_tests: [unique, not_null]
+      - name: category
+        description: 앞뒤 공백 제거 후 값. 빈 값은 assert_article_category_not_blank 가 막는다
+        data_tests: [not_null]
+
+  - name: stg_article_keywords
+    columns:
+      - name: source_url
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_articles')
+                field: source_url
+
+  - name: stg_runs
+    columns:
+      - name: run_id
+        data_tests: [unique, not_null]
+      - name: outcome
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["SUCCESS", "PARTIAL_FAILURE", "EMPTY", "FAILURE"]
+      - name: trigger
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["schedule", "workflow_dispatch", "backfill", "local"]
+      - name: started_at
+        data_tests: [not_null]
+      - name: completed_at
+        data_tests: [not_null]
+
+  - name: stg_channel_runs
+    columns:
+      - name: channel
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["naver", "daum", "rss"]
+      - name: outcome
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["SUCCESS", "PARTIAL_FAILURE", "EMPTY", "FAILURE"]
+
+  - name: stg_keyword_aliases
+    columns:
+      - name: normalized_alias
+        data_tests:
+          - not_null
