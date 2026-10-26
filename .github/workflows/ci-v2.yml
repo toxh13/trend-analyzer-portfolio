@@ -131,7 +131,8 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: analytics/requirements*.txt
-      - run: pip install -r analytics/requirements.txt pytest==9.1.1
+      # pytest 버전은 analytics/requirements.txt 에서 고정합니다(여기서 따로 지정하면 충돌)
+      - run: pip install -r analytics/requirements.txt
       - name: pytest analytics
         run: python -m pytest -q analytics
       - name: 고정 데이터 → 정적 JSON
