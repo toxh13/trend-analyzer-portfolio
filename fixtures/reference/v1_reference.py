@@ -17,6 +17,8 @@ v1과 일부러 다르게 한 점 (docs/v2/DESIGN.md 5.1)
 - 정렬 동점: 키워드 오름차순으로 결정적 처리 (v1은 HashMap 순서)
 - 기사 목록·근거 기사는 as_of 이전 발행분만, 기사 목록은 최신 100건
 - score(hotness)는 소수 넷째 자리 반올림 (v1 Java float 오차 제거)
+
+일별 weightedScore 반올림은 v1 과 같은 half-up(Math.round) 입니다.
 """
 
 from __future__ import annotations
@@ -25,6 +27,7 @@ import argparse
 import csv
 import hashlib
 import json
+import math
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
@@ -345,6 +348,14 @@ def article_weight(occurrence: int) -> float:
     return 1.0 + REPEATED_MENTION_BONUS_LIMIT * (1.0 - (1.0 / occurrence))
 
 
+def round_three_decimals(value: float) -> float:
+    """v1 roundToThreeDecimals: Math.round(value * 1000.0) / 1000.0 (half-up).
+
+    Python round() 는 half-even 이라 3.5625 처럼 정확히 중간인 값에서 Java 와 결과가 달라진다.
+    """
+    return math.floor(value * 1000.0 + 0.5) / 1000.0
+
+
 def to_offset(published: datetime) -> str:
     return published.replace(tzinfo=SEOUL).isoformat()
 
@@ -396,7 +407,7 @@ def keyword_detail(keyword, articles, aliases, as_of, generated_at):
         "today": today.isoformat(),
         "generatedAt": generated_at,
         "daily": [
-            {"day": day.isoformat(), "articleCount": count, "weightedScore": round(score, 3)}
+            {"day": day.isoformat(), "articleCount": count, "weightedScore": round_three_decimals(score)}
             for day, (count, score) in sorted(daily.items())
         ],
         "articles": [
