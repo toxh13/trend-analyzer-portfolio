@@ -1,0 +1,15 @@
+{
+  "analyzedArticles": 6,
+  "trackedKeywords": 6,
+  "risingKeyword": {
+    "keyword": "인공지능",
+    "mentionCount": 4,
+    "changeAmount": 3
+  },
+  "fallingKeyword": {
+    "keyword": "환율",
+    "mentionCount": 1,
+    "changeAmount": -2
+  },
+  "windowHours": 24
+}

@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "runId": "33333333-3333-4333-8333-333333333333",
+  "startedAt": "2026-10-24T00:17:00Z",
+  "completedAt": "2026-10-24T00:20:30Z",
+  "outcome": "SUCCESS",
+  "trigger": "workflow_dispatch",
+  "crawlerOutputCount": 8,
+  "validationRejectedCount": 0,
+  "duplicateUrlCount": 0,
+  "previouslySeenCount": 0,
+  "eligibleCount": 8,
+  "selectedCount": 8,
+  "droppedByLimitCount": 0,
+  "preprocessingFailedCount": 0,
+  "writtenCount": 8,
+  "writeFailedCount": 0,
+  "reconciliationOk": true,
+  "durationMs": 61000,
+  "channels": [
+    {
+      "channel": "naver",
+      "outcome": "SUCCESS",
+      "validatedArticleCount": 4,
+      "sourceInvalidCount": 0,
+      "successfulUnits": 2,
+      "partialUnits": 0,
+      "emptyUnits": 0,
+      "failedUnits": 0
+    },
+    {
+      "channel": "daum",
+      "outcome": "SUCCESS",
+      "validatedArticleCount": 2,
+      "sourceInvalidCount": 0,
+      "successfulUnits": 2,
+      "partialUnits": 0,
+      "emptyUnits": 0,
+      "failedUnits": 0
+    },
+    {
+      "channel": "rss",
+      "outcome": "SUCCESS",
+      "validatedArticleCount": 2,
+      "sourceInvalidCount": 0,
+      "successfulUnits": 6,
+      "partialUnits": 0,
+      "emptyUnits": 0,
+      "failedUnits": 0
+    }
+  ],
+  "codeVersion": "fixture"
+}

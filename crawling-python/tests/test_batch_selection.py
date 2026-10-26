@@ -112,6 +112,35 @@ class BatchSelectionTest(unittest.TestCase):
         self.assertEqual(selection.valid_input, selection.duplicate_urls + selection.eligible)
         self.assertEqual(selection.eligible, len(selection.articles) + selection.dropped_by_limit)
 
+    def test_excludes_seen_urls_before_round_robin(self):
+        naver = CrawlResult(
+            channel="naver",
+            articles=[article("naver", "IT", number) for number in range(1, 4)],
+        )
+        seen_urls = {"https://example.com/naver/IT/1", " https://example.com/naver/IT/2 "}
+
+        selection = select_articles_fairly([naver], limit=1, seen_urls=seen_urls)
+
+        self.assertEqual([item["title"] for item in selection.articles], ["기사 3"])
+        self.assertEqual(selection.previously_seen, 2)
+        self.assertEqual(selection.eligible, 1)
+        self.assertEqual(selection.dropped_by_limit, 0)
+
+    def test_batch_duplicate_is_counted_before_previously_seen(self):
+        url = "https://example.com/same"
+        naver = CrawlResult(channel="naver", articles=[article("naver", "IT", 1, url=url)])
+        rss = CrawlResult(channel="rss", articles=[article("rss", "IT", 2, url=url + " ")])
+
+        selection = select_articles_fairly([naver, rss], limit=50, seen_urls={url})
+
+        self.assertEqual(selection.articles, [])
+        self.assertEqual(selection.previously_seen, 1)
+        self.assertEqual(selection.duplicate_urls, 1)
+        self.assertEqual(
+            selection.valid_input,
+            selection.duplicate_urls + selection.previously_seen + selection.eligible,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

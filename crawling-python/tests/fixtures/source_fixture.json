@@ -1,0 +1,82 @@
+{
+  "naver": [
+    {
+      "title": "예시 기사 101",
+      "content": "국내 반도체 업계가 인공지능 서버 수요 확대에 맞춰 고대역폭 메모리 생산을 늘리고 있다. 업계는 인공지능 반도체 투자가 내년까지 이어질 것으로 보고 있으며, 클라우드 사업자들도 데이터센터 증설 계획을 잇따라 내놓고 있다. 반도체 장비 업체의 수주도 함께 늘어나는 흐름이다. 전문가들은 공급망 안정이 다음 과제라고 짚었다.",
+      "sourceUrl": "https://news.example.com/naver/101",
+      "source": "네이버 뉴스",
+      "category": "IT/과학",
+      "publishedAt": "2026-10-24T09:00:00"
+    },
+    {
+      "title": "예시 기사 102",
+      "content": "인공지능 보안 위협이 커지면서 기업들이 보안 인력 채용을 늘리고 있다.",
+      "sourceUrl": "https://news.example.com/naver/102",
+      "source": "네이버 뉴스",
+      "category": "IT/과학",
+      "publishedAt": "2026-10-24T09:30:00"
+    },
+    {
+      "title": "예시 기사 103",
+      "content": "원달러 환율이 하락하면서 증시가 반등했다. 환율 안정에 외국인 매수가 늘었다.",
+      "sourceUrl": "https://news.example.com/naver/103",
+      "source": "네이버 뉴스",
+      "category": "경제",
+      "publishedAt": "2026-10-24T10:00:00"
+    }
+  ],
+  "daum": {
+    "units": [
+      {
+        "category": "IT/과학",
+        "outcome": "failure"
+      },
+      {
+        "category": "경제",
+        "outcome": "failure"
+      }
+    ]
+  },
+  "rss": [
+    {
+      "title": "예시 기사 104",
+      "content": "반도체 수출이 석 달 연속 늘었다. 메모리 반도체 가격 회복이 수출을 이끌었다.",
+      "sourceUrl": "https://news.example.com/rss/104",
+      "source": "Google News RSS - 반도체",
+      "category": "IT/과학",
+      "publishedAt": "2026-10-24T08:00:00"
+    },
+    {
+      "title": "예시 기사 105",
+      "content": "환율 변동성이 커지자 수출 기업들이 환헤지 비중을 높이고 있다.",
+      "sourceUrl": "https://news.example.com/rss/105",
+      "source": "Google News RSS - 환율",
+      "category": "경제",
+      "publishedAt": "2026-10-24T08:30:00"
+    },
+    {
+      "title": "예시 기사 106",
+      "content": "외환 당국이 환율 급변동에 대응해 시장 점검 회의를 열었다.",
+      "sourceUrl": "https://news.example.com/rss/106",
+      "source": "Google News RSS - 환율",
+      "category": "경제",
+      "publishedAt": "2026-10-24T08:40:00"
+    },
+    {
+      "title": "예시 기사 107",
+      "content": "",
+      "sourceUrl": "https://news.example.com/rss/107",
+      "source": "Google News RSS - 환율",
+      "category": "경제",
+      "publishedAt": "2026-10-24T08:50:00"
+    },
+    {
+      "title": "예시 기사 101 (RSS 중복)",
+      "content": "같은 기사가 다른 수집원에서 다시 나왔다.",
+      "sourceUrl": "https://news.example.com/naver/101",
+      "source": "Google News RSS - 반도체",
+      "category": "IT/과학",
+      "publishedAt": "2026-10-24T09:10:00"
+    }
+  ]
+}

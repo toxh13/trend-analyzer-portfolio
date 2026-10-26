@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "정적 JSON 공통 정의 (Spring DTO 필드명과 동일)",
+  "$defs": {
+    "seoulDate": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "slug": { "type": "string", "pattern": "^[0-9a-f]{16}$", "description": "UTF-8 문자열의 SHA-256 hex 앞 16자리" },
+    "trendItem": {
+      "description": "v1 TrendingResponseDto",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "keyword", "category", "score", "mention_count", "rank", "changeType", "changeValue"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^keyword-" },
+        "keyword": { "type": "string", "minLength": 1 },
+        "category": { "type": "string", "minLength": 1 },
+        "score": { "type": "number", "description": "hotnessScore (alias 병합 후 합산)" },
+        "mention_count": { "type": "integer", "minimum": 0 },
+        "rank": { "type": "integer", "minimum": 1 },
+        "changeType": { "enum": ["up", "down", "same"] },
+        "changeValue": { "type": "integer", "minimum": 0, "description": "|velocityScore|" }
+      }
+    },
+    "trendList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/trendItem" }
+    },
+    "statsKeyword": {
+      "description": "v1 TrendStatsKeywordDto",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keyword", "mentionCount", "changeAmount"],
+      "properties": {
+        "keyword": { "type": "string" },
+        "mentionCount": { "type": "integer", "minimum": 0 },
+        "changeAmount": { "type": "integer" }
+      }
+    },
+    "article": {
+      "description": "v1 ArticleResponseDto. id 는 v1 의 'article -<DB id>' 대신 sourceUrl SHA-256 앞 16자리 기반",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "source", "date", "url"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^article-[0-9a-f]{16}$" },
+        "title": { "type": "string" },
+        "source": { "type": "string" },
+        "date": { "type": "string", "description": "publishedAt 서울 로컬 ISO, YYYY-MM-DDTHH:MM:SS" },
+        "url": { "type": "string" }
+      }
+    },
+    "evidenceArticle": {
+      "description": "v1 ArticleEvidenceDto. id 는 v1 의 Long 대신 문자열",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "summary", "source", "publishedAt", "sourceUrl"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^article-[0-9a-f]{16}$" },
+        "title": { "type": "string" },
+        "summary": { "type": "string" },
+        "source": { "type": "string" },
+        "publishedAt": { "type": "string", "pattern": "\\+09:00$", "description": "오프셋 포함 ISO (v1 OffsetDateTime 직렬화)" },
+        "sourceUrl": { "type": "string" }
+      }
+    },
+    "dailyPoint": {
+      "description": "v1 TrendHistoryDto 에서 partial 을 뺀 것 (partial 은 day == today 로 프론트가 계산)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["day", "articleCount", "weightedScore"],
+      "properties": {
+        "day": { "$ref": "#/$defs/seoulDate" },
+        "articleCount": { "type": "integer", "minimum": 0 },
+        "weightedScore": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

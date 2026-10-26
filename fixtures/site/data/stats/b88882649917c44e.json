@@ -1,0 +1,15 @@
+{
+  "analyzedArticles": 2,
+  "trackedKeywords": 4,
+  "risingKeyword": {
+    "keyword": "반도체",
+    "mentionCount": 1,
+    "changeAmount": 1
+  },
+  "fallingKeyword": {
+    "keyword": "환율",
+    "mentionCount": 1,
+    "changeAmount": -2
+  },
+  "windowHours": 24
+}

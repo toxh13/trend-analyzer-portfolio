@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 
 import DashboardHeader from '../components/DashboardHeader';
 import SidebarNav from '../components/SidebarNav';
+import StaticFreshnessBanner from '../components/StaticFreshnessBanner';
 import { useTrends } from '../hooks/useTrends';
 import { fetchTrendStats } from '../api/trendApi';
 import { buildTrendStats } from '../utils/trendUtils';
@@ -174,6 +175,7 @@ export default function MainLayout() {
 
                     {/* 사이드바 메뉴 또는 키워드 클릭에 따라 이 영역의 페이지가 교체됩니다. */}
                     <main className="mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-6 lg:px-8">
+                        <StaticFreshnessBanner />
                         <Outlet
                             context={{
                                 allTrends,

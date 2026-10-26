@@ -1,0 +1,97 @@
+# v2 수집: 3시간마다 batch_cli 를 실행해 원천 파일을 data 브랜치에 추가합니다.
+# 설계: docs/v2/DESIGN.md 7절, 운영: docs/v2/RUNBOOK.md
+# 예약 실행·수동 실행은 이 파일이 기본 브랜치(main)에 있어야 동작합니다.
+name: ingest
+
+on:
+  schedule:
+    - cron: '17 */3 * * *'  # UTC 기준 3시간마다 17분 (서울 00:17, 03:17, ...)
+  workflow_dispatch:
+    inputs:
+      max_articles:
+        description: '최대 수집 기사 수 (backfill 은 크게, 예: 400)'
+        required: false
+        default: '50'
+        type: string
+      trigger:
+        description: 'run JSON 의 trigger 값'
+        required: false
+        default: workflow_dispatch
+        type: choice
+        options:
+          - workflow_dispatch
+          - backfill
+
+permissions: {}
+
+# data 브랜치에 push 하는 실행은 한 번에 하나만. 진행 중인 수집은 취소하지 않고 다음 실행이 기다립니다.
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.trigger == 'backfill' && 90 || 30 }}
+    permissions:
+      contents: write  # data 브랜치 push
+    outputs:
+      outcome: ${{ steps.ingest.outputs.outcome }}
+      written: ${{ steps.ingest.outputs.written }}
+      run_id: ${{ steps.ingest.outputs.run_id }}
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: data 브랜치 체크아웃
+        uses: actions/checkout@v7
+        with:
+          ref: data
+          path: data
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: crawling-python/requirements-batch.txt
+
+      - name: Java 21 (KoNLPy)
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: 수집기 의존성 설치
+        run: pip install -r crawling-python/requirements-batch.txt
+
+      - name: 수집 → 원천 파일 커밋·push
+        id: ingest
+        env:
+          TRIGGER: ${{ github.event_name == 'schedule' && 'schedule' || inputs.trigger }}
+          MAX_ARTICLES: ${{ inputs.max_articles }}
+          CODE_VERSION: ${{ github.sha }}
+        run: bash scripts/ops/ingest.sh data
+
+  notify:
+    needs: ingest
+    # 사람이 취소한 실행은 알리지 않음. 시간 초과는 failure 로 끝나므로 알림 대상
+    if: ${{ always() && (needs.ingest.result == 'success' || needs.ingest.result == 'failure') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/ops
+
+      - name: pipeline-failure Issue 갱신
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          STATUS: ${{ needs.ingest.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SUMMARY: trigger=${{ github.event_name }} outcome=${{ needs.ingest.outputs.outcome || '없음' }} written=${{ needs.ingest.outputs.written || '0' }}
+        run: python3 scripts/ops/alert_issue.py "$STATUS" --workflow ingest --run-url "$RUN_URL" --summary "$SUMMARY"

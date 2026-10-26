@@ -21,6 +21,26 @@ class DeliveryResult:
         return self.preprocessing_failed + self.http_failed + self.transport_failed
 
 
+SUMMARY_MAX_LENGTH = 150
+
+
+def summarize_content(content: str) -> str:
+    """본문 앞 150자를 요약으로 쓰고, 잘린 경우에만 '...'을 붙입니다."""
+    return content[:SUMMARY_MAX_LENGTH] + "..." if len(content) > SUMMARY_MAX_LENGTH else content
+
+
+def preprocess_article(article: dict, keyword_extractor: Callable) -> dict:
+    """기사 원본은 그대로 두고, 키워드·요약을 붙이고 본문을 뺀 사본을 만듭니다.
+
+    v1 HTTP 전송 경로와 v2 파일 출력 경로가 같은 규칙을 쓰도록 공용 함수로 둡니다.
+    """
+    payload = article.copy()
+    payload["keywords"] = keyword_extractor(payload["content"])
+    payload["summary"] = summarize_content(payload["content"])
+    del payload["content"]
+    return payload
+
+
 def deliver_articles(session, endpoint: str, articles: list[dict], keyword_extractor: Callable) -> DeliveryResult:
     """선택된 기사를 가공해 백엔드로 보내고 각 실패 지점을 집계합니다."""
     preprocessing_failed = 0
@@ -30,12 +50,7 @@ def deliver_articles(session, endpoint: str, articles: list[dict], keyword_extra
 
     for article in articles:
         try:
-            payload = article.copy()
-            payload["keywords"] = keyword_extractor(payload["content"])
-
-            content_text = payload["content"]
-            payload["summary"] = content_text[:150] + "..." if len(content_text) > 150 else content_text
-            del payload["content"]
+            payload = preprocess_article(article, keyword_extractor)
         except Exception as exc:
             preprocessing_failed += 1
             print(f"article preprocessing failed: {exc}")

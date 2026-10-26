@@ -1,0 +1,22 @@
+[
+  {
+    "id": "keyword-반도체",
+    "keyword": "반도체",
+    "category": "경제",
+    "score": 1.0,
+    "mention_count": 1,
+    "rank": 1,
+    "changeType": "up",
+    "changeValue": 1
+  },
+  {
+    "id": "keyword-인공지능",
+    "keyword": "인공지능",
+    "category": "경제",
+    "score": 1.0,
+    "mention_count": 1,
+    "rank": 2,
+    "changeType": "up",
+    "changeValue": 1
+  }
+]

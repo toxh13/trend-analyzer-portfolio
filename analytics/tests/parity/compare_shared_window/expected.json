@@ -1,0 +1,78 @@
+{
+  "java": [
+    "backend-spring/src/test/java/com/example/backendspring/service/TrendServiceTest.java#compareKeywordHistorySharesOneWindow"
+  ],
+  "asOf": "2026-07-18T15:30:00",
+  "adapted": null,
+  "snapshot": null,
+  "checks": [
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "timezone"
+      ],
+      "equals": "Asia/Seoul"
+    },
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "today"
+      ],
+      "equals": "2026-07-18"
+    },
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "daily"
+      ],
+      "length": 30
+    },
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "daily",
+        23,
+        "day"
+      ],
+      "equals": "2026-07-12"
+    },
+    {
+      "file": "keywords/{keyword:반도체}.json",
+      "path": [
+        "timezone"
+      ],
+      "equals": "Asia/Seoul"
+    },
+    {
+      "file": "keywords/{keyword:반도체}.json",
+      "path": [
+        "today"
+      ],
+      "equals": "2026-07-18"
+    },
+    {
+      "file": "keywords/{keyword:반도체}.json",
+      "path": [
+        "daily"
+      ],
+      "length": 30
+    },
+    {
+      "file": "keywords/{keyword:반도체}.json",
+      "path": [
+        "daily",
+        23,
+        "day"
+      ],
+      "equals": "2026-07-12"
+    },
+    {
+      "file": "keywords/index.json",
+      "path": [
+        "aliasToCanonical",
+        "ai"
+      ],
+      "equals": "인공지능"
+    }
+  ]
+}

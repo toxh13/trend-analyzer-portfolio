@@ -1,0 +1,83 @@
+version: 2
+
+models:
+  - name: fct_trend_snapshot
+    description: v1 trend_metrics 스냅샷 (대표 키워드 × 카테고리)
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [keyword, category]
+    columns:
+      - name: keyword
+        data_tests: [not_null]
+      - name: category
+        data_tests: [not_null]
+      - name: mention_count
+        data_tests: [not_null]
+
+  - name: fct_trend_merged
+    description: 조회 범위별 대표 키워드 병합 결과
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [scope, keyword]
+
+  - name: fct_trend_lists
+    description: 정적 JSON 목록 파일의 행
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [list_type, scope, list_rank]
+      - unique_combination:
+          arguments:
+            columns: [list_type, scope, keyword]
+    columns:
+      - name: list_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["top", "popular", "surging"]
+      - name: change_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["up", "down", "same"]
+
+  - name: dim_category
+    columns:
+      - name: category
+        data_tests: [unique, not_null]
+      - name: category_slug
+        data_tests: [unique]
+
+  - name: dim_keyword
+    columns:
+      - name: keyword
+        data_tests: [unique, not_null]
+      - name: keyword_slug
+        data_tests: [unique]
+
+  - name: dim_keyword_lookup
+    columns:
+      - name: normalized_keyword
+        data_tests: [unique]
+      - name: keyword
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_keyword')
+                field: keyword
+
+  - name: fct_keyword_daily
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [keyword, day]
+
+  - name: fct_ingest_runs
+    columns:
+      - name: run_id
+        data_tests: [unique]
+
+  - name: fct_pipeline_status
+    description: 항상 1행

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "stats/all.json, stats/<slug>.json (v1 TrendStatsResponseDto)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["analyzedArticles", "trackedKeywords", "risingKeyword", "fallingKeyword", "windowHours"],
+  "properties": {
+    "analyzedArticles": { "type": "integer", "minimum": 0 },
+    "trackedKeywords": { "type": "integer", "minimum": 0, "description": "최근 24시간 고유 원본 키워드 수 (alias 적용 전)" },
+    "risingKeyword": { "oneOf": [{ "type": "null" }, { "$ref": "common.schema.json#/$defs/statsKeyword" }] },
+    "fallingKeyword": { "oneOf": [{ "type": "null" }, { "$ref": "common.schema.json#/$defs/statsKeyword" }] },
+    "windowHours": { "const": 24 }
+  }
+}

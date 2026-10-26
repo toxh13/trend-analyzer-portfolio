@@ -1,0 +1,15 @@
+{
+  "analyzedArticles": 4,
+  "trackedKeywords": 4,
+  "risingKeyword": {
+    "keyword": "인공지능",
+    "mentionCount": 3,
+    "changeAmount": 2
+  },
+  "fallingKeyword": {
+    "keyword": "보안",
+    "mentionCount": 0,
+    "changeAmount": -1
+  },
+  "windowHours": 24
+}

@@ -1,0 +1,2 @@
+https://news.example.com/naver/103
+https://news.example.com/old/999

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "keyword-인공지능",
+    "keyword": "인공지능",
+    "category": "IT/과학",
+    "score": 3.4,
+    "mention_count": 4,
+    "rank": 1,
+    "changeType": "up",
+    "changeValue": 3
+  },
+  {
+    "id": "keyword-반도체",
+    "keyword": "반도체",
+    "category": "IT/과학",
+    "score": 2.8,
+    "mention_count": 4,
+    "rank": 2,
+    "changeType": "up",
+    "changeValue": 2
+  },
+  {
+    "id": "keyword-클라우드",
+    "keyword": "클라우드",
+    "category": "IT/과학",
+    "score": 2.0,
+    "mention_count": 2,
+    "rank": 3,
+    "changeType": "up",
+    "changeValue": 2
+  },
+  {
+    "id": "keyword-증시",
+    "keyword": "증시",
+    "category": "경제",
+    "score": 0.4,
+    "mention_count": 1,
+    "rank": 4,
+    "changeType": "same",
+    "changeValue": 0
+  },
+  {
+    "id": "keyword-환율",
+    "keyword": "환율",
+    "category": "경제",
+    "score": -0.8,
+    "mention_count": 1,
+    "rank": 5,
+    "changeType": "down",
+    "changeValue": 2
+  }
+]

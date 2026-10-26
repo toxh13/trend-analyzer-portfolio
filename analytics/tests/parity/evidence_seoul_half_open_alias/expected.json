@@ -1,0 +1,106 @@
+{
+  "java": [
+    "backend-spring/src/test/java/com/example/backendspring/service/TrendEvidenceServiceTest.java#getHistoryEvidenceUsesSeoulHalfOpenWindowAliasesAndLimit"
+  ],
+  "asOf": "2026-07-20T10:00:00",
+  "adapted": "Java 는 날짜 7/19 근거를 limit 2 로 조회한다. 정적 파일은 날짜별 최신 5건을 담고 화면이 limit 만큼 자른다. 날짜 경계(7/18 23:59, 7/20 00:00) 기사를 더해 반개구간을 확인한다.",
+  "snapshot": null,
+  "checks": [
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "searchKeywords"
+      ],
+      "equals": [
+        "AI",
+        "인공지능"
+      ]
+    },
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "evidenceByDay",
+        "2026-07-19"
+      ],
+      "length": 2
+    },
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "evidenceByDay",
+        "2026-07-19",
+        0,
+        "title"
+      ],
+      "equals": "최신 기사"
+    },
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "evidenceByDay",
+        "2026-07-19",
+        1,
+        "title"
+      ],
+      "equals": "이전 기사"
+    },
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "evidenceByDay",
+        "2026-07-19",
+        0,
+        "summary"
+      ],
+      "equals": "최신 요약"
+    },
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "evidenceByDay",
+        "2026-07-19",
+        0,
+        "source"
+      ],
+      "equals": "테스트 언론사"
+    },
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "evidenceByDay",
+        "2026-07-19",
+        0,
+        "publishedAt"
+      ],
+      "equals": "2026-07-19T23:59:00+09:00"
+    },
+    {
+      "file": "keywords/{keyword:인공지능}.json",
+      "path": [
+        "evidenceByDay",
+        "2026-07-19",
+        0,
+        "sourceUrl"
+      ],
+      "equals": "https://example.com/2"
+    },
+    {
+      "file": "keywords/{keyword:반도체}.json",
+      "path": [
+        "searchKeywords"
+      ],
+      "equals": [
+        "반도체",
+        "세미컨덕터"
+      ]
+    },
+    {
+      "file": "keywords/{keyword:반도체}.json",
+      "path": [
+        "evidenceByDay",
+        "2026-07-19"
+      ],
+      "absent": true
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "java": [
+    "backend-spring/src/test/java/com/example/backendspring/service/TrendServiceTest.java#getTop20CategoryTrendTest"
+  ],
+  "asOf": "2026-07-18T15:30:00",
+  "adapted": "mock hotness 대신 AI(cur 3/prev 1, 2.4) > Docker(cur 4/prev 5, 1.0) > Spring(cur 1/prev 1, 0.4) 로 같은 순서와 up/down/same 을 만든다.",
+  "snapshot": null,
+  "checks": [
+    {
+      "file": "trends/category/{category:TECH}.json",
+      "path": [],
+      "length": 3
+    },
+    {
+      "file": "trends/category/{category:TECH}.json",
+      "path": [
+        0,
+        "rank"
+      ],
+      "equals": 1
+    },
+    {
+      "file": "trends/category/{category:TECH}.json",
+      "path": [
+        0,
+        "keyword"
+      ],
+      "equals": "AI"
+    },
+    {
+      "file": "trends/category/{category:TECH}.json",
+      "path": [
+        0,
+        "changeType"
+      ],
+      "equals": "up"
+    },
+    {
+      "file": "trends/category/{category:TECH}.json",
+      "path": [
+        1,
+        "rank"
+      ],
+      "equals": 2
+    },
+    {
+      "file": "trends/category/{category:TECH}.json",
+      "path": [
+        1,
+        "changeType"
+      ],
+      "equals": "down"
+    },
+    {
+      "file": "trends/category/{category:TECH}.json",
+      "path": [
+        2,
+        "rank"
+      ],
+      "equals": 3
+    },
+    {
+      "file": "trends/category/{category:TECH}.json",
+      "path": [
+        2,
+        "changeType"
+      ],
+      "equals": "same"
+    }
+  ]
+}

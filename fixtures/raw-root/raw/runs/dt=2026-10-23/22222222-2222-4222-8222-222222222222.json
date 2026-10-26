@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "runId": "22222222-2222-4222-8222-222222222222",
+  "startedAt": "2026-10-23T03:17:00Z",
+  "completedAt": "2026-10-23T03:20:30Z",
+  "outcome": "PARTIAL_FAILURE",
+  "trigger": "schedule",
+  "crawlerOutputCount": 7,
+  "validationRejectedCount": 1,
+  "duplicateUrlCount": 0,
+  "previouslySeenCount": 0,
+  "eligibleCount": 6,
+  "selectedCount": 6,
+  "droppedByLimitCount": 0,
+  "preprocessingFailedCount": 0,
+  "writtenCount": 6,
+  "writeFailedCount": 0,
+  "reconciliationOk": true,
+  "durationMs": 61000,
+  "channels": [
+    {
+      "channel": "naver",
+      "outcome": "SUCCESS",
+      "validatedArticleCount": 3,
+      "sourceInvalidCount": 0,
+      "successfulUnits": 2,
+      "partialUnits": 0,
+      "emptyUnits": 0,
+      "failedUnits": 0
+    },
+    {
+      "channel": "daum",
+      "outcome": "FAILURE",
+      "validatedArticleCount": 0,
+      "sourceInvalidCount": 0,
+      "successfulUnits": 0,
+      "partialUnits": 0,
+      "emptyUnits": 0,
+      "failedUnits": 2
+    },
+    {
+      "channel": "rss",
+      "outcome": "SUCCESS",
+      "validatedArticleCount": 3,
+      "sourceInvalidCount": 0,
+      "successfulUnits": 6,
+      "partialUnits": 0,
+      "emptyUnits": 0,
+      "failedUnits": 0
+    }
+  ],
+  "codeVersion": "fixture"
+}

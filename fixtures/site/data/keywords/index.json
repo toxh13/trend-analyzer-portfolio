@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-24T03:00:00Z",
+  "keywords": [
+    {
+      "keyword": "반도체",
+      "slug": "40f5c8093251f77d",
+      "aliases": [],
+      "mentionCount": 4,
+      "articleCount30d": 8
+    },
+    {
+      "keyword": "인공지능",
+      "slug": "c597b282778e3c88",
+      "aliases": [
+        "A.I.",
+        "AI"
+      ],
+      "mentionCount": 4,
+      "articleCount30d": 6
+    },
+    {
+      "keyword": "클라우드",
+      "slug": "f5deb01f4f509d3a",
+      "aliases": [],
+      "mentionCount": 2,
+      "articleCount30d": 3
+    },
+    {
+      "keyword": "환율",
+      "slug": "7dbb5ceb4870cdb8",
+      "aliases": [],
+      "mentionCount": 1,
+      "articleCount30d": 5
+    },
+    {
+      "keyword": "증시",
+      "slug": "0a12747915ef63e8",
+      "aliases": [],
+      "mentionCount": 1,
+      "articleCount30d": 2
+    }
+  ],
+  "aliasToCanonical": {
+    "ai": "인공지능",
+    "반도체": "반도체",
+    "인공지능": "인공지능",
+    "증시": "증시",
+    "클라우드": "클라우드",
+    "환율": "환율"
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "java": [
+    "backend-spring/src/test/java/com/example/backendspring/service/TrendServiceTest.java#getKeyword7DaysHistoryUsesSeoulCalendarWindow"
+  ],
+  "asOf": "2026-07-18T15:30:00",
+  "adapted": null,
+  "snapshot": null,
+  "checks": [
+    {
+      "file": "keywords/{keyword:LLM}.json",
+      "path": [
+        "daily",
+        23,
+        "day"
+      ],
+      "equals": "2026-07-12"
+    },
+    {
+      "file": "keywords/{keyword:LLM}.json",
+      "path": [
+        "daily",
+        {
+          "day": "2026-07-16"
+        },
+        "articleCount"
+      ],
+      "equals": 1
+    },
+    {
+      "file": "keywords/{keyword:LLM}.json",
+      "path": [
+        "daily",
+        {
+          "day": "2026-07-16"
+        },
+        "weightedScore"
+      ],
+      "equals": 1.16
+    },
+    {
+      "file": "keywords/{keyword:LLM}.json",
+      "path": [
+        "daily",
+        {
+          "day": "2026-07-17"
+        },
+        "articleCount"
+      ],
+      "equals": 0
+    },
+    {
+      "file": "keywords/{keyword:LLM}.json",
+      "path": [
+        "daily",
+        {
+          "day": "2026-07-17"
+        },
+        "weightedScore"
+      ],
+      "equals": 0.0
+    },
+    {
+      "file": "keywords/{keyword:LLM}.json",
+      "path": [
+        "daily",
+        29,
+        "day"
+      ],
+      "equals": "2026-07-18"
+    },
+    {
+      "file": "keywords/{keyword:LLM}.json",
+      "path": [
+        "daily",
+        {
+          "day": "2026-07-18"
+        },
+        "articleCount"
+      ],
+      "equals": 1
+    },
+    {
+      "file": "keywords/{keyword:LLM}.json",
+      "path": [
+        "today"
+      ],
+      "equals": "2026-07-18"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "runs/recent.json — 최근 수집 실행 50회 (운영 현황 화면)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["generatedAt", "runs"],
+  "properties": {
+    "generatedAt": { "type": "string", "pattern": "Z$" },
+    "runs": {
+      "type": "array",
+      "maxItems": 50,
+      "description": "startedAt 내림차순",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["runId", "startedAt", "completedAt", "outcome", "trigger", "selectedCount", "writtenCount", "previouslySeenCount", "validationRejectedCount", "reconciliationOk", "durationMs", "channels"],
+        "properties": {
+          "runId": { "type": "string" },
+          "startedAt": { "type": "string", "pattern": "Z$" },
+          "completedAt": { "type": "string", "pattern": "Z$" },
+          "outcome": { "enum": ["SUCCESS", "PARTIAL_FAILURE", "EMPTY", "FAILURE"] },
+          "trigger": { "enum": ["schedule", "workflow_dispatch", "backfill", "local"] },
+          "selectedCount": { "type": "integer", "minimum": 0 },
+          "writtenCount": { "type": "integer", "minimum": 0 },
+          "previouslySeenCount": { "type": "integer", "minimum": 0 },
+          "validationRejectedCount": { "type": "integer", "minimum": 0 },
+          "reconciliationOk": { "type": "boolean" },
+          "durationMs": { "type": "integer", "minimum": 0 },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["channel", "outcome", "validatedArticleCount"],
+              "properties": {
+                "channel": { "enum": ["naver", "daum", "rss"] },
+                "outcome": { "enum": ["SUCCESS", "PARTIAL_FAILURE", "EMPTY", "FAILURE"] },
+                "validatedArticleCount": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Raw article (data 브랜치 raw/articles/dt=YYYY-MM-DD/<runId>.jsonl 의 한 줄)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "runId", "channel", "source", "category", "title", "sourceUrl", "publishedAt", "crawledAt", "summary", "keywords"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "runId": { "type": "string", "format": "uuid" },
+    "channel": { "enum": ["naver", "daum", "rss"] },
+    "source": { "type": "string", "minLength": 1, "description": "v1 articles.source 와 동일. 예: 네이버 뉴스, 다음 뉴스, Google News RSS - 반도체" },
+    "category": { "type": "string", "minLength": 1, "description": "예: IT/과학, 경제" },
+    "title": { "type": "string", "minLength": 1, "maxLength": 1000 },
+    "sourceUrl": { "type": "string", "minLength": 1, "maxLength": 1000, "pattern": "^https?://" },
+    "publishedAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$",
+      "description": "Asia/Seoul 로컬 시각, 오프셋 없음 (v1 crawlers/article_fields.py 출력 형식)"
+    },
+    "crawledAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$",
+      "description": "UTC, Z 접미사. 이 기사를 파일에 쓴 시각"
+    },
+    "summary": { "type": "string", "minLength": 1, "description": "본문 앞 150자, 150자 초과 시 '...' 덧붙임 (v1 article_delivery.py 와 동일). 본문 전체는 저장하지 않는다" },
+    "keywords": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["keyword", "occurrenceCount"],
+        "properties": {
+          "keyword": { "type": "string", "minLength": 2 },
+          "occurrenceCount": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  }
+}

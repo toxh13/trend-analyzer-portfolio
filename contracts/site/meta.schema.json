@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "meta.json — 배포본 메타데이터와 신선도 (README 배지가 freshness 를 읽음)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatedAt", "asOf", "timezone", "lastRun", "lastSuccessfulRunAt", "freshness", "freshnessHours", "counts", "codeVersion"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "generatedAt": { "type": "string", "pattern": "Z$" },
+    "asOf": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$", "description": "지표 기준 시각, 서울 로컬" },
+    "timezone": { "const": "Asia/Seoul" },
+    "lastRun": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runId", "completedAt", "outcome"],
+          "properties": {
+            "runId": { "type": "string" },
+            "completedAt": { "type": "string", "pattern": "Z$" },
+            "outcome": { "enum": ["SUCCESS", "PARTIAL_FAILURE", "EMPTY", "FAILURE"] }
+          }
+        }
+      ]
+    },
+    "lastSuccessfulRunAt": { "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "Z$" }] },
+    "freshness": { "enum": ["ok", "stale", "down"], "description": "ok: 6시간 이내 성공 run, stale: 6~24시간, down: 24시간 초과 또는 없음" },
+    "freshnessHours": { "oneOf": [{ "type": "null" }, { "type": "number", "minimum": 0 }] },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["articles30d", "keywords30d", "runs7d"],
+      "properties": {
+        "articles30d": { "type": "integer", "minimum": 0 },
+        "keywords30d": { "type": "integer", "minimum": 0 },
+        "runs7d": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "codeVersion": { "type": "string" }
+  }
+}

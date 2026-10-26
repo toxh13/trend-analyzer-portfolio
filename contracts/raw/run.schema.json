@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Raw ingest run (data 브랜치 raw/runs/dt=YYYY-MM-DD/<runId>.json)",
+  "description": "v1 crawlers/batch_reporting.build_completed_payload 계약을 파일 sink 에 맞게 옮긴 것. 대사식은 docs/v2/DESIGN.md 4절",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "runId", "startedAt", "completedAt", "outcome", "trigger",
+    "crawlerOutputCount", "validationRejectedCount", "duplicateUrlCount", "previouslySeenCount",
+    "eligibleCount", "selectedCount", "droppedByLimitCount", "preprocessingFailedCount",
+    "writtenCount", "writeFailedCount", "reconciliationOk", "durationMs", "channels", "codeVersion"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "runId": { "type": "string", "format": "uuid" },
+    "startedAt": { "type": "string", "pattern": "Z$" },
+    "completedAt": { "type": "string", "pattern": "Z$" },
+    "outcome": { "enum": ["SUCCESS", "PARTIAL_FAILURE", "EMPTY", "FAILURE"] },
+    "trigger": { "enum": ["schedule", "workflow_dispatch", "backfill", "local"] },
+    "crawlerOutputCount": { "type": "integer", "minimum": 0 },
+    "validationRejectedCount": { "type": "integer", "minimum": 0 },
+    "duplicateUrlCount": { "type": "integer", "minimum": 0, "description": "같은 배치 안 URL 중복" },
+    "previouslySeenCount": { "type": "integer", "minimum": 0, "description": "seen_urls.txt 에 있어 선택 전에 제외한 수 (v2 신규)" },
+    "eligibleCount": { "type": "integer", "minimum": 0 },
+    "selectedCount": { "type": "integer", "minimum": 0 },
+    "droppedByLimitCount": { "type": "integer", "minimum": 0 },
+    "preprocessingFailedCount": { "type": "integer", "minimum": 0 },
+    "writtenCount": { "type": "integer", "minimum": 0, "description": "JSONL 에 실제로 쓴 줄 수" },
+    "writeFailedCount": { "type": "integer", "minimum": 0 },
+    "reconciliationOk": { "type": "boolean" },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "codeVersion": { "type": "string", "description": "수집기 git commit SHA 또는 'local'" },
+    "channels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["channel", "outcome", "validatedArticleCount", "sourceInvalidCount", "successfulUnits", "partialUnits", "emptyUnits", "failedUnits"],
+        "properties": {
+          "channel": { "enum": ["naver", "daum", "rss"] },
+          "outcome": { "enum": ["SUCCESS", "PARTIAL_FAILURE", "EMPTY", "FAILURE"] },
+          "validatedArticleCount": { "type": "integer", "minimum": 0 },
+          "sourceInvalidCount": { "type": "integer", "minimum": 0 },
+          "successfulUnits": { "type": "integer", "minimum": 0 },
+          "partialUnits": { "type": "integer", "minimum": 0 },
+          "emptyUnits": { "type": "integer", "minimum": 0 },
+          "failedUnits": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  }
+}

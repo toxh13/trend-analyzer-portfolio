@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "categories.json (v1 CategoryResponseDto + slug), 카테고리명 오름차순",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["id", "label", "trendCount", "slug"],
+    "properties": {
+      "id": { "type": "string" },
+      "label": { "type": "string" },
+      "trendCount": { "type": "integer", "minimum": 0 },
+      "slug": { "$ref": "common.schema.json#/$defs/slug" }
+    }
+  }
+}

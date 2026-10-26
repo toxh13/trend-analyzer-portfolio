@@ -1,0 +1,217 @@
+{
+  "schemaVersion": 1,
+  "keyword": "클라우드",
+  "slug": "f5deb01f4f509d3a",
+  "aliases": [],
+  "searchKeywords": [
+    "클라우드"
+  ],
+  "timezone": "Asia/Seoul",
+  "today": "2026-10-24",
+  "generatedAt": "2026-10-24T03:00:00Z",
+  "daily": [
+    {
+      "day": "2026-09-25",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-09-26",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-09-27",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-09-28",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-09-29",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-09-30",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-01",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-02",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-03",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-04",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-05",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-06",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-07",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-08",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-09",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-10",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-11",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-12",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-13",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-14",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-15",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-16",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-17",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-18",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-19",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-20",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-21",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    },
+    {
+      "day": "2026-10-22",
+      "articleCount": 1,
+      "weightedScore": 1.1
+    },
+    {
+      "day": "2026-10-23",
+      "articleCount": 2,
+      "weightedScore": 2.0
+    },
+    {
+      "day": "2026-10-24",
+      "articleCount": 0,
+      "weightedScore": 0.0
+    }
+  ],
+  "articles": [
+    {
+      "id": "article-f860ec6edad33054",
+      "title": "고정 기사 13",
+      "source": "다음 뉴스",
+      "date": "2026-10-23T20:00:00",
+      "url": "https://news.example.com/daum/013"
+    },
+    {
+      "id": "article-3057e72028f5e508",
+      "title": "고정 기사 10",
+      "source": "네이버 뉴스",
+      "date": "2026-10-23T12:10:00",
+      "url": "https://news.example.com/naver/010"
+    },
+    {
+      "id": "article-277039c1a7b751af",
+      "title": "고정 기사 1",
+      "source": "네이버 뉴스",
+      "date": "2026-10-22T08:00:00",
+      "url": "https://news.example.com/naver/001"
+    }
+  ],
+  "evidenceByDay": {
+    "2026-10-22": [
+      {
+        "id": "article-277039c1a7b751af",
+        "title": "고정 기사 1",
+        "summary": "고정 기사 1의 요약입니다.",
+        "source": "네이버 뉴스",
+        "publishedAt": "2026-10-22T08:00:00+09:00",
+        "sourceUrl": "https://news.example.com/naver/001"
+      }
+    ],
+    "2026-10-23": [
+      {
+        "id": "article-f860ec6edad33054",
+        "title": "고정 기사 13",
+        "summary": "고정 기사 13의 요약입니다.",
+        "source": "다음 뉴스",
+        "publishedAt": "2026-10-23T20:00:00+09:00",
+        "sourceUrl": "https://news.example.com/daum/013"
+      },
+      {
+        "id": "article-3057e72028f5e508",
+        "title": "고정 기사 10",
+        "summary": "고정 기사 10의 요약입니다.",
+        "source": "네이버 뉴스",
+        "publishedAt": "2026-10-23T12:10:00+09:00",
+        "sourceUrl": "https://news.example.com/naver/010"
+      }
+    ]
+  }
+}
