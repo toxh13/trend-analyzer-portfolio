@@ -1,0 +1,22 @@
+# 수집 대상 RSS 피드 17개 (연합뉴스 5, 경향신문 6, 동아일보 6). 순서가 곧 수집 순서다.
+# source: yna | khan | donga, category: 정치 | 경제 | 사회 | 세계 | 문화 | IT/과학
+feeds:
+  - {source: yna, feed: politics, category: "정치", url: "https://www.yna.co.kr/rss/politics.xml"}
+  - {source: yna, feed: economy, category: "경제", url: "https://www.yna.co.kr/rss/economy.xml"}
+  - {source: yna, feed: society, category: "사회", url: "https://www.yna.co.kr/rss/society.xml"}
+  - {source: yna, feed: international, category: "세계", url: "https://www.yna.co.kr/rss/international.xml"}
+  - {source: yna, feed: culture, category: "문화", url: "https://www.yna.co.kr/rss/culture.xml"}
+
+  - {source: khan, feed: politic_news, category: "정치", url: "https://www.khan.co.kr/rss/rssdata/politic_news.xml"}
+  - {source: khan, feed: economy_news, category: "경제", url: "https://www.khan.co.kr/rss/rssdata/economy_news.xml"}
+  - {source: khan, feed: society_news, category: "사회", url: "https://www.khan.co.kr/rss/rssdata/society_news.xml"}
+  - {source: khan, feed: kh_world, category: "세계", url: "https://www.khan.co.kr/rss/rssdata/kh_world.xml"}
+  - {source: khan, feed: culture_news, category: "문화", url: "https://www.khan.co.kr/rss/rssdata/culture_news.xml"}
+  - {source: khan, feed: science_news, category: "IT/과학", url: "https://www.khan.co.kr/rss/rssdata/science_news.xml"}
+
+  - {source: donga, feed: politics, category: "정치", url: "https://rss.donga.com/politics.xml"}
+  - {source: donga, feed: economy, category: "경제", url: "https://rss.donga.com/economy.xml"}
+  - {source: donga, feed: national, category: "사회", url: "https://rss.donga.com/national.xml"}
+  - {source: donga, feed: international, category: "세계", url: "https://rss.donga.com/international.xml"}
+  - {source: donga, feed: culture, category: "문화", url: "https://rss.donga.com/culture.xml"}
+  - {source: donga, feed: science, category: "IT/과학", url: "https://rss.donga.com/science.xml"}
