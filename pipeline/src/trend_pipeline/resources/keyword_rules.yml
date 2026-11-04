@@ -1,0 +1,21 @@
+# 키워드 추출 규칙. 키는 keywords.RuleSet 필드와 같다.
+# 값이 바뀌면 rule version(정규화 JSON 해시)이 바뀌므로 바꿀 때는 새 규칙 버전이 된다.
+# hanja_map은 앞에서부터 차례로 치환한다. 긴 것(中企)을 짧은 것(中)보다 먼저 둔다.
+input_field: title
+analyzer: kiwi
+analyzer_version: 0.24.1
+pos_tags: [NNG, NNP, SL, SH]
+min_length: 2
+stopwords: []
+hanja_map:
+  - [中企, 중소기업]
+  - [美, 미국]
+  - [中, 중국]
+  - [日, 일본]
+  - [北, 북한]
+  - [韓, 한국]
+  - [英, 영국]
+  - [伊, 이탈리아]
+  - [與, 여당]
+  - [野, 야당]
+  - [靑, 청와대]
