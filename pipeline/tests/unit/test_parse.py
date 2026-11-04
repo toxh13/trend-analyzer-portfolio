@@ -161,6 +161,47 @@ def test_unusable_rfc822_pubdate_is_parse_failed(pub):
     assert result.parse_failed == 1
 
 
+@pytest.mark.parametrize(
+    "pub",
+    [
+        # parsedate_to_datetime이 ValueError가 아니라 OverflowError를 던지는 값들
+        "Wed, 04 Nov 2026 04:11:05 +99999999999999999999",
+        "Wed, 99999999999999999999 Nov 2026 04:11:05 GMT",
+        "Wed, 04 Nov 2026 99999999999999999999:11:05 GMT",
+    ],
+)
+def test_overflowing_rfc822_pubdate_is_parse_failed_not_fatal(pub):
+    # 터무니없이 큰 숫자 하나가 피드 전체를 죽이면 안 된다: 그 항목만 세고 나머지는 계속
+    body = rss(
+        item_xml(title="앞", link="https://example.com/a/1"),
+        item_xml(title="큰 숫자", link="https://example.com/a/2", pub=pub),
+        item_xml(title="뒤", link="https://example.com/a/3"),
+    )
+    result = parse_feed(env_for(body))
+    assert [i.title for i in result.items] == ["앞", "뒤"]
+    assert result.parse_failed == 1
+
+
+@pytest.mark.parametrize("dc_date", ["0001-01-01T00:00:00+09:00", "9999-12-31T23:59:59-09:00"])
+def test_iso_value_out_of_range_after_utc_conversion_is_parse_failed(dc_date):
+    # 읽기는 되지만 UTC로 바꾸면 datetime 범위를 벗어나는 값(astimezone의 OverflowError)
+    body = rss(
+        item_xml(title="앞", link="https://example.com/a/1"),
+        item_xml(title="범위 밖", link="https://example.com/a/2", pub=None, extra=f"<dc:date>{dc_date}</dc:date>"),
+    )
+    result = parse_feed(env_for(body))
+    assert [i.title for i in result.items] == ["앞"]
+    assert result.parse_failed == 1
+
+
+def test_out_of_range_pubdate_falls_back_to_valid_dc_date():
+    # pubDate가 범위를 벗어나도 dc:date가 멀쩡하면 그 값을 쓴다
+    xml = item_xml(
+        pub="Fri, 31 Dec 9999 23:59:59 -0900", extra="<dc:date>2026-11-04T13:11:05+09:00</dc:date>"
+    )
+    assert parse_one(rss(xml)).published_at == UTC_INSTANT
+
+
 @pytest.mark.parametrize("dc_date", ["2026-11-04T13:11:05", "2026-11-04", "yesterday", ""])
 def test_naive_or_unreadable_iso_is_parse_failed(dc_date):
     # 오프셋이 없는 ISO 값은 어느 시간대인지 알 수 없어 UTC로 가정하지 않는다

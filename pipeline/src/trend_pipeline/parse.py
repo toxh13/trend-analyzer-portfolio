@@ -109,7 +109,7 @@ def _published_at(element: ET.Element) -> datetime | None:
             continue
         try:
             return parsed.astimezone(timezone.utc)
-        except OverflowError:  # 0001년처럼 UTC로 바꾸면 범위를 벗어나는 값
+        except OverflowError:  # 0001년·9999년처럼 UTC로 바꾸면 범위를 벗어나는 값
             continue
     return None
 
@@ -117,7 +117,8 @@ def _published_at(element: ET.Element) -> datetime | None:
 def _parse_rfc822(value: str) -> datetime | None:
     try:
         parsed = parsedate_to_datetime(value)
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, OverflowError):
+        # 터무니없이 큰 숫자는 ValueError가 아니라 OverflowError로 올라온다. 그 항목만 버리고 피드는 계속한다
         return None
     if parsed.tzinfo is None:
         # parsedate_to_datetime은 "-0000"과 모르는 시간대 이름("KST" 등)을 모두 naive로 돌려준다.
@@ -131,7 +132,7 @@ def _parse_rfc822(value: str) -> datetime | None:
 def _parse_iso(value: str) -> datetime | None:
     try:
         parsed = datetime.fromisoformat(value)
-    except ValueError:
+    except (ValueError, OverflowError):
         return None
     # 오프셋이 없는 값은 어느 시간대인지 알 수 없어 UTC로 가정하지 않는다
     if parsed.utcoffset() is None:
