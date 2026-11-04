@@ -1,0 +1,31 @@
+name: Pipeline Tests
+
+on:
+  push:
+    paths:
+      - 'pipeline/**'
+      - '.github/workflows/pipeline-tests.yml'
+  pull_request:
+    paths:
+      - 'pipeline/**'
+      - '.github/workflows/pipeline-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  # 단위 테스트: 외부 의존(Docker, Oracle) 없이 실행됩니다.
+  # 통합 테스트(testcontainers Oracle)는 별도 `integration` 잡으로 이 아래에 추가합니다.
+  unit:
+    name: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install pipeline package
+        run: pip install -e "pipeline[test]"
+      - name: Run unit tests
+        run: pytest pipeline/tests/unit -q
