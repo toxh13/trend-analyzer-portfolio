@@ -21,6 +21,52 @@ Oracle 접속 정보는 환경 변수로만 받습니다. 값을 파일·코드�
 | `ORACLE_USER` | DB 사용자 |
 | `ORACLE_PASSWORD` | DB 비밀번호 |
 
+## 로컬 DB 준비
+
+CLI는 V10 마이그레이션(`backend-spring/src/main/resources/db/migration/V10__create_v2_silver_tables.sql`)이 만드는 v2 테이블에 씁니다. 저장소의 `docker-compose.local.yml` Oracle은 호스트 포트를 열지 않고, 백엔드 `local` 프로필은 Flyway를 끄고 JPA로 스키마를 만들기 때문에 그 DB에는 V10 테이블이 없습니다. 로컬에서 CLI를 돌릴 때는 버려도 되는 Oracle 컨테이너를 따로 띄우고 V10만 적용합니다. V10은 V2~V9의 테이블을 참조하지 않으므로 V10 하나만 적용해도 됩니다.
+
+아래 명령은 모두 저장소 루트의 PowerShell에서 실행합니다. 비밀번호는 입력받아 현재 셸의 환경 변수에만 두고 파일이나 명령 기록에 남기지 않습니다.
+
+**1) 접속 정보.** 비밀번호는 영문자로 시작하는 영문·숫자로 정하세요. 포트 15210이 막혀 있으면 다른 번호로 바꾸고 2)의 포트도 같이 바꿉니다.
+
+```powershell
+$secure = Read-Host "로컬 Oracle 앱 계정 비밀번호" -AsSecureString
+$env:ORACLE_PASSWORD = [System.Net.NetworkCredential]::new("", $secure).Password
+$env:ORACLE_USER = "trend_pipeline"
+$env:ORACLE_DSN = "localhost:15210/FREEPDB1"
+```
+
+**2) 컨테이너.** `gvenzl/oracle-free:23-slim`을 앱 계정과 함께 띄웁니다. `-e APP_USER_PASSWORD`처럼 값 없이 쓰면 docker가 현재 셸의 환경 변수 값을 넘깁니다. 관리자(SYS) 비밀번호는 무작위로 만들고 쓰지 않습니다.
+
+```powershell
+$env:APP_USER_PASSWORD = $env:ORACLE_PASSWORD
+docker run -d --name trend-pipeline-oracle -p 127.0.0.1:15210:1521 -e ORACLE_RANDOM_PASSWORD=yes -e APP_USER=trend_pipeline -e APP_USER_PASSWORD gvenzl/oracle-free:23-slim
+docker logs -f trend-pipeline-oracle  # "DATABASE IS READY TO USE!"가 나오면 Ctrl+C
+```
+
+**3) V10 적용.** 패키지의 `trend_pipeline.db` 연결(위 세 환경 변수)로 V10을 실행합니다. DDL이라 따로 커밋하지 않아도 됩니다. 여는 `@'`와 닫는 `'@`는 줄 맨 앞에 있어야 합니다.
+
+```powershell
+@'
+from pathlib import Path
+from trend_pipeline.db import connect
+
+sql = Path("backend-spring/src/main/resources/db/migration/V10__create_v2_silver_tables.sql").read_text(encoding="utf-8")
+with connect() as conn, conn.cursor() as cursor:
+    for chunk in sql.split(";"):
+        code = "\n".join(line for line in chunk.splitlines() if not line.strip().startswith("--")).strip()
+        if code:
+            cursor.execute(code)
+print("V10 applied")
+'@ | pipeline\.venv\Scripts\python -
+```
+
+**4) 정리.** 다 쓰면 컨테이너를 지웁니다. 데이터도 함께 사라집니다.
+
+```powershell
+docker rm -f trend-pipeline-oracle
+```
+
 ## 실행
 
 ```text
@@ -42,7 +88,9 @@ python -m trend_pipeline run --interval-end 2026-11-04T03:00:00Z --run-type manu
 python -m trend_pipeline run --interval-end 2026-11-04T03:00:00Z --run-type backfill --raw-root .\raw
 ```
 
-표준 출력에는 요약 한 줄만 나옵니다. 피드별 실패는 표준 오류에 한 줄씩 나옵니다.
+CLI는 피드 17개를 차례로 수집합니다. 응답이 느린 매체가 있으면 그 피드 하나가 재시도까지 최악 약 4분(시도 3번 × 연결 10초·읽기 30초 제한, 시도 사이 대기 최대 60초 × 2) 걸릴 수 있어 실행 전체가 길어질 수 있습니다. 계획 2의 Airflow DAG는 피드별 작업으로 나눠 병렬로 수집합니다.
+
+표준 출력에는 요약 한 줄만 나옵니다. 피드별 실패와 파싱 오류(원본은 저장됨)는 표준 오류에 `feed=<매체>/<피드> action=<동작> error=<내용>` 형식으로 한 줄씩 나옵니다.
 
 ```text
 run_id=<uuid> outcome=SUCCESS new=1087 existing=0 inserted=1087 keywords=8093
@@ -56,7 +104,7 @@ run_id=<uuid> outcome=SUCCESS new=1087 existing=0 inserted=1087 keywords=8093
 
 ## 원본 키 구조
 
-원본은 한 번만 쓰고(write-once) 지우지 않습니다. 처리는 이 원본을 읽어 여러 번 할 수 있습니다.
+원본은 한 번만 쓰고(write-once) 고치지 않습니다. 처리는 이 원본을 읽어 여러 번 할 수 있습니다. 이 CLI는 원본을 지우지 않으며, 보관 기간(30일)이 지난 원본·실버 데이터 정리는 계획 2의 보관 작업이 맡습니다.
 
 ```text
 raw/dt=YYYY-MM-DD/source={yna|khan|donga}/feed={feed}/run=YYYYMMDDTHHMMSSZ.json
