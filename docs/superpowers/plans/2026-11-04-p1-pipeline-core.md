@@ -10,6 +10,13 @@
 
 **Spec:** `D:\GitHub\프로젝트노트\TrendAnalyzer_v2\설계 문서.md` (볼트) → Task 0에서 저장소 `docs/design/2026-11-04-trend-analyzer-v2-design.md`로 복사
 
+> **계획 완료 뒤 바뀐 것 (2026-11-05, 계획 2 전 수정 · 사용자 결정):** 아래 본문은 계획 당시 그대로 둔다. 이후 바뀐 점:
+> ① 카테고리는 `news_articles.category` 대신 기사-카테고리 다대다 `news_article_categories`(본 섹션의 합집합, 처리 순서와 무관). "먼저 나온 피드가 이긴다"는 기사 행(제목 등)에만 남음
+> ② 봉투 v2(`ENVELOPE_VERSION = 2`): 받은 본문 바이트(base64) + 그 sha256, 읽을 때 대조. 디코드는 처리 단계(`envelope.body_text`). v1도 읽음
+> ③ 정기·수동 수집은 구간 끝이 지금 − 1시간 ~ 지금 + 5분일 때만(`collect_feed`가 실제 시계로 검사). 지난 구간은 백필로만
+> ④ 조건부 요청 validator는 오류 없는 피드 행에서만 고름
+> 이유: 볼트 `결정/06_처리와 적재.md` "계획 2 전 수정"
+
 ## Global Constraints
 
 - 저장소: `D:\GitHub\trend-analyzer-portfolio`, 브랜치 `v2/p1-pipeline-core`, PR로 `main`에 합침
