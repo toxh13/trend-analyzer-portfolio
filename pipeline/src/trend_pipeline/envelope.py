@@ -1,7 +1,8 @@
 """피드 요청/응답 한 건을 감싸는 원본 봉투(envelope). 한 번 쓰면 고치지 않는(write-once) 객체로 저장된다.
 
-봉투는 받은 바이트를 그대로 담는다(v2). 글자로 바꾸는(디코드) 일은 읽는 쪽(body_text)이 한다.
-그래야 디코드 규칙이 바뀌어도 원본에서 다시 처리할 수 있고, body_sha256이 받은 바이트의 증명이 된다.
+봉투는 받은 본문 바이트를 그대로 담는다(v2). 글자로 바꾸는(디코드) 일은 읽는 쪽(body_text)이 한다.
+그래야 디코드 규칙이 바뀌어도 원본에서 다시 처리할 수 있고, body_sha256이 받은 본문의 증명이 된다.
+"받은 본문"은 전송 압축(Content-Encoding: gzip 등)을 requests가 푼 뒤의 바이트다(전선 위 바이트 그대로는 아니다).
 """
 
 import base64
@@ -135,7 +136,8 @@ def from_bytes(data: bytes) -> Envelope:
     """
     payload = json.loads(data.decode("utf-8"))
     version = payload.get("envelope_version")
-    expected = _FIELDS_BY_VERSION.get(version)
+    # True == 1, 2.0 == 2라서 dict 조회만으로는 형식이 다른 값도 통과한다. 정수일 때만 찾는다
+    expected = _FIELDS_BY_VERSION.get(version) if type(version) is int else None
     if expected is None:
         raise ValueError(f"지원하지 않는 envelope_version: {version!r} (지원: {sorted(_FIELDS_BY_VERSION)})")
     if set(payload) != expected:
@@ -151,6 +153,13 @@ def from_bytes(data: bytes) -> Envelope:
         except binascii.Error as exc:
             raise ValueError(f"body_base64를 읽을 수 없다: {exc}") from exc
 
+    status = payload["status"]
+    if type(status) is not int or status not in (200, 304):
+        raise ValueError(f"봉투의 status는 200, 304뿐이다 (읽은 값: {status!r})")
+    # 본문과 지문을 함께 지운 200은 지문 대조를 통과하므로 따로 막는다(그대로 두면 '0건 성공'으로 기록된다)
+    if (status == 200) != (body is not None):
+        raise ValueError(f"status {status} 봉투의 본문 유무가 맞지 않는다 (본문 {'있음' if body is not None else '없음'})")
+
     body_sha256 = payload["body_sha256"]
     actual = None if body is None else sha256(body).hexdigest()
     if actual != body_sha256:
@@ -165,7 +174,7 @@ def from_bytes(data: bytes) -> Envelope:
         request_url=payload["request_url"],
         requested_at=_to_utc(datetime.fromisoformat(payload["requested_at"])),
         crawler_version=payload["crawler_version"],
-        status=payload["status"],
+        status=status,
         etag=payload["etag"],
         last_modified=payload["last_modified"],
         content_type=payload["content_type"],

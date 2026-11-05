@@ -233,9 +233,33 @@ def test_integrity_error_is_a_value_error():
     assert issubclass(EnvelopeIntegrityError, ValueError)
 
 
-def test_from_bytes_rejects_unknown_envelope_version():
+@pytest.mark.parametrize("version", [ENVELOPE_VERSION + 1, 2.0, True, "2"])
+def test_from_bytes_rejects_unknown_envelope_version(version):
     payload = stored(ok_envelope())
-    payload["envelope_version"] = ENVELOPE_VERSION + 1
+    payload["envelope_version"] = version
+    with pytest.raises(ValueError):
+        from_bytes(json.dumps(payload).encode("utf-8"))
+
+
+def test_from_bytes_rejects_200_whose_body_and_hash_were_both_removed():
+    # 본문과 지문을 함께 지우면 지문 대조는 통과한다. 그대로 두면 그 피드가 오류 없이 '0건 성공'으로 기록된다
+    payload = stored(ok_envelope())
+    payload["body_base64"], payload["body_sha256"] = None, None
+    with pytest.raises(ValueError):
+        from_bytes(json.dumps(payload).encode("utf-8"))
+
+
+def test_from_bytes_rejects_304_with_body():
+    payload = stored(ok_envelope())
+    payload["status"] = 304
+    with pytest.raises(ValueError):
+        from_bytes(json.dumps(payload).encode("utf-8"))
+
+
+@pytest.mark.parametrize("status", [500, "200", None])
+def test_from_bytes_rejects_status_other_than_200_and_304(status):
+    payload = stored(ok_envelope())
+    payload["status"] = status
     with pytest.raises(ValueError):
         from_bytes(json.dumps(payload).encode("utf-8"))
 
