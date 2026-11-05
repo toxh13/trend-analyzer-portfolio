@@ -214,53 +214,99 @@ def test_rerun_keeps_run_type_of_first_load(conn, sample_run, rules):
     assert record["started_at"] >= first["started_at"] and record["completed_at"] >= first["completed_at"]
 
 
-@pytest.mark.parametrize("preloaded", [False, True], ids=["first-load", "rerun"])
-def test_concurrent_runs_no_duplicates_no_errors(conn, sample_run, rules, preloaded):
+# A가 커밋 전 행을 쥔 채 B의 문장이 DB에 닿아 막힐 때까지 기다리는 여유(초). 앱 계정은 v$session을 볼 수 없어
+# B가 막혔는지를 직접 확인하지 못한다. 그래도 아래에서 B의 시도 횟수를 단정하므로 겹침이 빠지면 조용히 통과하지 않는다
+CONTENTION_GRACE = 1.0
+
+
+@pytest.mark.parametrize(
+    ("preloaded", "contended", "b_attempts"),
+    [
+        # 처음 적재: B의 기사 MERGE가 A의 커밋 전 INSERT에 막혔다가 A가 커밋하면 ORA-00001 → B는 처음부터 다시 한다
+        pytest.param(False, "_merge_articles", 2, id="first-load"),
+        # 다시 적재: B의 키워드 DELETE가 A가 지운(커밋 전) 행에 막혔다가 A가 커밋하면 이어서 끝낸다(재시도 없음)
+        pytest.param(True, "_delete_keywords", 1, id="rerun"),
+    ],
+)
+def test_concurrent_runs_no_duplicates_no_errors(
+    conn, sample_run, rules, monkeypatch, preloaded, contended, b_attempts
+):
     expected = len(loadable_keys(sample_run))
     if preloaded:
-        # 이미 적재된 실행을 둘이 동시에 다시 돌린다(키워드 지우고 다시 쓰기·실행 행 갱신이 겹친다)
-        load_run(conn, sample_run, rules)
-    barrier = threading.Barrier(2)
-    results: list[LoadStats | None] = [None, None]
+        load_run(conn, sample_run, rules)  # 아래에서 세는 시도 횟수에 들어가지 않게 감싸기 전에 적재한다
+
+    attempts: Counter[str] = Counter()  # 스레드 이름(A, B) → _load_once 호출 수
+    a_done, b_entered, b_done = threading.Event(), threading.Event(), threading.Event()
+    real_load_once, real_step = load._load_once, getattr(load, contended)
+
+    def counted_load_once(*args, **kwargs):
+        attempts[threading.current_thread().name] += 1
+        return real_load_once(*args, **kwargs)
+
+    def paced_step(*args, **kwargs):
+        # 첫 시도에서만 순서를 맞춘다: A가 먼저 쓰고(커밋 전) → B가 같은 행을 건드려 막힌다 → A가 커밋한다
+        name = threading.current_thread().name
+        first_attempt = attempts[name] == 1
+        if name == "B" and first_attempt:
+            assert a_done.wait(timeout=60)
+            b_entered.set()
+            try:
+                return real_step(*args, **kwargs)
+            finally:
+                b_done.set()
+        result = real_step(*args, **kwargs)
+        if name == "A" and first_attempt:
+            a_done.set()
+            assert b_entered.wait(timeout=60)
+            # B는 A가 커밋할 때까지 이 단계를 끝낼 수 없다
+            assert not b_done.wait(timeout=CONTENTION_GRACE)
+        return result
+
+    monkeypatch.setattr(load, "_load_once", counted_load_once)
+    monkeypatch.setattr(load, contended, paced_step)
+    results: dict[str, LoadStats] = {}
     errors: list[BaseException] = []
 
-    def worker(index: int) -> None:
+    def worker() -> None:
         try:
             # 각자 연결을 연다(conftest가 세 환경 변수를 설정해 두었다)
             with db.connect() as own:
-                barrier.wait(timeout=60)
-                results[index] = load_run(own, sample_run, rules)
+                results[threading.current_thread().name] = load_run(own, sample_run, rules)
         except BaseException as exc:  # 스레드 안의 예외를 본 스레드로 넘긴다
             errors.append(exc)
 
-    threads = [threading.Thread(target=worker, args=(index,)) for index in range(2)]
+    threads = [threading.Thread(target=worker, name=name) for name in ("A", "B")]
     for thread in threads:
         thread.start()
     for thread in threads:
         thread.join(timeout=300)
 
     assert errors == []
-    assert all(isinstance(stats, LoadStats) for stats in results)
-    # 실행 기록은 구간 기준이라 둘 다 같은 건수를 본다. 실제로 넣은 행은 (처음 적재일 때) 한쪽에만 있다
-    assert all((stats.new_articles, stats.existing_articles) == (expected, 0) for stats in results)
-    assert sum(stats.inserted_articles for stats in results) == (0 if preloaded else expected)
-    assert results[0].keyword_rows == results[1].keyword_rows > 0
+    assert attempts == {"A": 1, "B": b_attempts}
+    a, b = results["A"], results["B"]
+    # 실행 기록은 구간 기준이라 둘 다 같은 건수를 본다. 실제로 넣은 행은 (처음 적재일 때) A에만 있다
+    assert (a.new_articles, a.existing_articles, a.outcome) == (expected, 0, "SUCCESS")
+    assert (a.inserted_articles, b.inserted_articles) == ((0, 0) if preloaded else (expected, 0))
+    assert replace(b, inserted_articles=a.inserted_articles) == a
+    assert a.keyword_rows > 0
     assert duplicate_rows(conn) == ([], [])
     assert counts(conn) == {
         "pipeline_feed_runs": 2,
         "pipeline_runs": 1,
-        "news_keywords": results[0].keyword_rows,
+        "news_keywords": a.keyword_rows,
         "news_articles": expected,
         "article_blocklist": 0,
         "keyword_rule_versions": 1,
     }
 
 
-def test_failure_mid_transaction_rolls_back_then_rerun_succeeds(conn, sample_run, rules, monkeypatch):
-    def fail(cursor, keyword_rows):
-        raise RuntimeError("키워드 INSERT 중 주입한 실패")
+# 실패를 넣을 단계: 키워드 INSERT(중간), 피드 실행 행 MERGE(커밋 전 마지막 쓰기: 기사·키워드·실행 행을 이미 쓴 뒤)
+@pytest.mark.parametrize("step", ["_insert_keywords", "_merge_feed_runs"])
+def test_failure_mid_transaction_rolls_back_then_rerun_succeeds(conn, sample_run, rules, monkeypatch, step):
+    def fail(*args, **kwargs):
+        raise RuntimeError(f"{step} 중 주입한 실패")
 
-    monkeypatch.setattr(load, "_insert_keywords", fail)
+    monkeypatch.setattr(load, step, fail)
     with pytest.raises(RuntimeError, match="주입한 실패"):
         load_run(conn, sample_run, rules)
 
@@ -269,9 +315,10 @@ def test_failure_mid_transaction_rolls_back_then_rerun_succeeds(conn, sample_run
 
     monkeypatch.undo()
     stats = load_run(conn, sample_run, rules)
-    assert stats.new_articles == len(loadable_keys(sample_run))
+    assert stats.new_articles == stats.inserted_articles == len(loadable_keys(sample_run))
     assert stats.outcome == "SUCCESS"
     assert counts(conn)["news_keywords"] == stats.keyword_rows > 0
+    assert counts(conn)["pipeline_feed_runs"] == len(sample_run.feeds)
 
 
 def test_unique_violation_reruns_whole_transaction_from_scratch(conn, sample_run, rules, monkeypatch):
