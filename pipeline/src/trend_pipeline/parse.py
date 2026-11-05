@@ -49,7 +49,7 @@ def parse_feed(env: Envelope) -> ParseResult:
 
     where = f"{env.source}/{env.feed}"
     # 서버가 BOM을 보내면 Task 4가 본문에 그대로 남기므로 여기서 한 번만 떼어낸다
-    body = env.body.removeprefix("﻿")
+    body = env.body.removeprefix("\ufeff")
     try:
         root = ET.fromstring(body)
     except ET.ParseError as exc:

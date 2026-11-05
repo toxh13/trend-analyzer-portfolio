@@ -27,7 +27,7 @@ Oracle 접속 정보는 환경 변수로만 받습니다. 값을 파일·코드�
 python -m trend_pipeline run --interval-end <구간 끝> --run-type <종류> --raw-root <원본 폴더>
 ```
 
-- `--interval-end`: 시간대가 있는 정각 ISO-8601 (예: `2026-11-04T03:00:00Z`). UTC로 바꿔 사용합니다.
+- `--interval-end`: 시간대가 있는 ISO-8601 시각으로, UTC로 바꿨을 때 정각이어야 합니다 (예: `2026-11-04T03:00:00Z`, `2026-11-04T12:00:00+09:00`). `+05:30`처럼 UTC 정각이 아닌 값은 거부합니다. `scheduled`·`manual`은 지금(UTC) + 5분보다 늦은 구간을 받지 않습니다. `backfill`은 어느 시각이든 받습니다.
 - `--run-type`: `scheduled`(정기), `manual`(수동), `backfill`(재처리)
 - `--raw-root`: 원본 봉투를 저장·읽는 폴더
 

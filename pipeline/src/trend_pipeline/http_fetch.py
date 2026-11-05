@@ -64,7 +64,7 @@ def _header(headers: Mapping[str, str], name: str) -> str | None:
 
 def _decode_body(content: bytes, headers: Mapping[str, str]) -> str:
     # response.text는 charset 없는 text/xml을 ISO-8859-1로 읽어 한글이 깨진다.
-    # Content-Type에 선언된 charset만 믿고, 없거나 모르는 이름이면 UTF-8로 읽는다
+    # Content-Type에 선언된 charset만 믿고, 없거나 쓸 수 없는 이름이면 UTF-8로 읽는다
     content_type = _header(headers, "Content-Type")
     if content_type:
         message = Message()
@@ -73,8 +73,10 @@ def _decode_body(content: bytes, headers: Mapping[str, str]) -> str:
         if charset:
             try:
                 return content.decode(charset, errors="replace")
-            except LookupError:
-                pass  # 모르는 코덱이거나 텍스트 코덱이 아님
+            except (LookupError, UnicodeError):
+                # 모르는 코덱·텍스트 코덱이 아님(LookupError), errors 인자와 상관없이 디코드를 거부하는 코덱
+                # (예: undefined → UnicodeError). 어느 쪽이든 수집을 실패시키지 않고 UTF-8로 읽는다
+                pass
     return content.decode("utf-8", errors="replace")
 
 

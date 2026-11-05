@@ -20,6 +20,7 @@ from trend_pipeline.load import (
     LoadStats,
     RunLoadInput,
     ensure_rule_version,
+    last_validators,
     load_run,
     writable_rule_sets,
 )
@@ -789,6 +790,18 @@ def test_keywords_need_a_registered_rule_version(conn, rule_set: RuleSet):
         load_run(conn, run, {rule_set.version: rule_set})
 
     assert counts(conn) == {table: 0 for table in V2_TABLES}
+
+
+def test_rule_and_validator_reads_leave_no_open_transaction(conn, rule_set: RuleSet):
+    # 처리 작업은 load_run 전에 열린 트랜잭션이 있으면 멈춘다. 그 앞에서 부르는 함수들은 트랜잭션을 남기지 않는다
+    other = replace(rule_set, stopwords=rule_set.stopwords | {"테스트불용어"})
+    for rules in (rule_set, other, rule_set):  # 등록(ACTIVE) → 등록(BUILDING) → 이미 있음(읽기만)
+        ensure_rule_version(conn, rules)
+        assert not conn.transaction_in_progress
+    assert set(writable_rule_sets(conn)) == {rule_set.version, other.version}
+    assert not conn.transaction_in_progress
+    assert last_validators(conn, feed_spec("yna", "정치")) == (None, None)
+    assert not conn.transaction_in_progress
 
 
 def test_writable_rule_sets_rejects_mismatched_version(conn, rule_set: RuleSet):

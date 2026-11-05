@@ -338,7 +338,7 @@ def test_304_envelope_returns_empty_result():
 
 
 def test_leading_bom_is_ignored():
-    body = "﻿" + rss(item_xml())
+    body = "\ufeff" + rss(item_xml())
     result = parse_feed(env_for(body))
     assert len(result.items) == 1
     assert result.parse_failed == 0

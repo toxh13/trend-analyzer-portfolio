@@ -223,7 +223,8 @@ def test_missing_content_type_decodes_as_utf8():
     assert result.body == text
 
 
-@pytest.mark.parametrize("charset", ["no-such-codec", "rot13"])
+# 모르는 이름(LookupError), 텍스트 코덱이 아닌 이름(LookupError), 디코드하면 UnicodeError를 내는 코덱(undefined)
+@pytest.mark.parametrize("charset", ["no-such-codec", "rot13", "undefined"])
 def test_unknown_or_non_text_charset_falls_back_to_utf8(charset):
     text = "<title>한국어 뉴스 속보</title>"
     session = FakeSession(make_response(200, {"Content-Type": f"text/xml; charset={charset}"}, text.encode("utf-8")))

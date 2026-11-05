@@ -37,12 +37,16 @@ def process_interval(
     conn: oracledb.Connection,
     collect_results: Sequence[CollectResult],
 ) -> LoadStats:
-    """구간 하나의 원본(feeds.yml 순서)을 읽어 load_run으로 적재하고 통계를 돌려준다."""
+    """구간 하나의 원본(feeds.yml 순서)을 읽어 load_run으로 적재하고 통계를 돌려준다.
+
+    conn에 열린 트랜잭션이 있으면 RuntimeError. 호출한 쪽의 작업을 대신 커밋(규칙 등록)하거나 버리지 않는다.
+    """
+    _require_no_transaction(conn, "열린 트랜잭션이 있는 연결로는 처리하지 않는다. 호출한 쪽이 먼저 커밋하거나 롤백해야 한다")
     rules = load_rules()
     ensure_rule_version(conn, rules)
     rule_sets = writable_rule_sets(conn)
-    if conn.transaction_in_progress:
-        conn.rollback()  # load_run은 열린 트랜잭션이 있으면 거부한다. 읽기만 했으므로 버려도 된다
+    # 규칙 등록·조회는 트랜잭션을 남기지 않는다. 남았다면 버그이므로 조용히 롤백하지 않고 멈춘다
+    _require_no_transaction(conn, "규칙 등록·조회 뒤 load_run 전에 트랜잭션이 열려 있다")
 
     collected = {(result.feed.source, result.feed.feed): result for result in collect_results}
     items: list[LoadItem] = []
@@ -53,6 +57,11 @@ def process_interval(
         outcomes.append(outcome)
 
     return load_run(conn, RunLoadInput(interval_end, run_type, items, outcomes), rule_sets)
+
+
+def _require_no_transaction(conn: oracledb.Connection, message: str) -> None:
+    if conn.transaction_in_progress:
+        raise RuntimeError(message)
 
 
 def _process_feed(

@@ -11,6 +11,8 @@ requires-python = ">=3.11,<3.12"
 dependencies = [
     "requests==2.34.2",
     "kiwipiepy==0.24.1",
+    # kiwipiepy가 쓰는 형태소 모델. 모델이 바뀌어도 같은 제목에서 다른 키워드가 나올 수 있어 함께 고정한다
+    "kiwipiepy_model==0.24.0",
     "oracledb==26.1.0",
     "PyYAML==6.0.3",
     "duckdb==2.0.0",

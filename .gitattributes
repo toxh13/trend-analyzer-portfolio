@@ -1,2 +1,4 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+# 고정 샘플 피드는 원본 증거라 어느 체크아웃에서도 바이트가 같아야 한다(줄 끝 변환 금지)
+pipeline/tests/fixtures/feeds/*.xml -text

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from trend_pipeline import collect as collect_module
 from trend_pipeline.collect import CollectResult, collect_feed
 from trend_pipeline.envelope import from_bytes
 from trend_pipeline.feeds import FeedSpec
@@ -127,6 +128,18 @@ def test_broken_xml_is_still_saved_and_reported(store):
     assert result.quality is None
     assert result.error is not None and result.error.startswith("FeedParseError: ")
     assert from_bytes(store.get(KEY)).body == "<rss><channel><item>"
+
+
+def test_unexpected_error_in_record_only_steps_still_saves_raw(store, monkeypatch):
+    # 파싱·기사 키·품질 검사는 기록용이다. 그 안의 예상 못 한 오류도 원본 저장을 막지 않는다
+    def broken_check(keyed):
+        raise RuntimeError("품질 검사 고장")
+
+    monkeypatch.setattr(collect_module, "check_items", broken_check)
+    body = (FIXTURES / "yna_politics.xml").read_text(encoding="utf-8")
+    result = collect(store, FakeFetch(result=ok(body)))
+    assert result == CollectResult(SPEC, KEY, "fetched", 200, None, "RuntimeError: 품질 검사 고장")
+    assert from_bytes(store.get(KEY)).body == body
 
 
 def test_200_bytes_round_trip_to_fetched_body(store):

@@ -34,7 +34,11 @@ def collect_feed(
     validators: tuple[str | None, str | None],
     fetch: Callable[..., FetchResult],
 ) -> CollectResult:
-    """원본이 없을 때만 요청해서 봉투로 저장한다. FetchError 외의 예외는 삼키지 않고 올린다."""
+    """원본이 없을 때만 요청해서 봉투로 저장한다.
+
+    FetchError는 failed 결과로 바꾼다. 기록용 단계(파싱·기사 키·품질 검사)의 오류는 원본 저장을 막지 않고
+    error에만 남긴다. 그 밖의 예외(요청 함수·저장소 오류 등)는 삼키지 않고 올린다.
+    """
     if run_type not in _RUN_TYPES:
         raise ValueError(f"알 수 없는 run_type: {run_type!r}")
 
@@ -59,7 +63,7 @@ def collect_feed(
 
     env = build_envelope(spec, fetched.requested_at, fetched.status, fetched.headers, fetched.body)
 
-    # 품질 검사는 기록만 한다. 파싱이 깨져도 원본은 저장한다(나중에 재처리할 수 있게)
+    # 품질 검사는 기록만 한다. 파싱이 깨지거나 이 단계에 버그가 있어도 원본은 저장한다(나중에 재처리할 수 있게)
     quality: QualityReport | None = None
     error: str | None = None
     try:
@@ -67,6 +71,8 @@ def collect_feed(
         quality = check_items([(article_key(spec.source, i.link, i.guid), i) for i in items])
     except FeedParseError as exc:
         error = f"FeedParseError: {exc}"
+    except Exception as exc:  # 기록용 단계라 어떤 오류도 원본 저장을 막지 않는다
+        error = f"{type(exc).__name__}: {exc}"
 
     if not store.put_if_absent(key, to_bytes(env)):
         # 다른 작성자가 먼저 썼다. 먼저 쓴 원본이 그대로 남는다

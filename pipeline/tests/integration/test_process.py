@@ -165,3 +165,23 @@ def test_failed_collect_result_without_raw_records_its_error(conn, seeded_store)
 
     assert stats.outcome == "PARTIAL_FAILURE"
     assert feed_run(conn, "donga", "culture") == (503, 0, "HTTP 503", None)
+
+
+def test_open_transaction_is_rejected_not_committed_or_rolled_back(conn, seeded_store, db_params):
+    # 호출한 쪽의 커밋 전 작업을 처리 작업이 대신 커밋하거나(규칙 등록) 조용히 롤백하지 않는다
+    with conn.cursor() as cursor:
+        cursor.execute(
+            "INSERT INTO article_blocklist (source, source_article_id, requester_type)"
+            " VALUES ('yna', 'pending', 'ADMIN')"
+        )
+    assert conn.transaction_in_progress
+
+    with pytest.raises(RuntimeError, match="트랜잭션"):
+        process_interval(INTERVAL_END, "backfill", seeded_store, conn, [])
+
+    assert conn.transaction_in_progress
+    assert scalar(conn, "SELECT COUNT(*) FROM article_blocklist") == 1  # 같은 세션에는 그대로 남아 있다
+    with db_params.connect() as other:
+        assert scalar(other, "SELECT COUNT(*) FROM article_blocklist") == 0  # 커밋되지 않았다
+        assert scalar(other, "SELECT COUNT(*) FROM keyword_rule_versions") == 0  # 규칙 등록도 하지 않았다
+    conn.rollback()

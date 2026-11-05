@@ -131,6 +131,7 @@ def last_validators(conn: oracledb.Connection, spec: FeedSpec) -> tuple[str | No
 
     "가장 최근"은 실행의 구간 끝(pipeline_runs.interval_end) 기준이다. 응답을 받은 행(200·304)이면서
     validator가 하나라도 있는 행만 본다. 없으면 (None, None).
+    읽은 뒤 롤백해 지금의 읽기 트랜잭션을 끝낸다. 커밋하지 않은 쓰기가 있는 연결로 부르면 그 쓰기도 버려진다.
     """
     with conn.cursor() as cursor:
         cursor.execute(

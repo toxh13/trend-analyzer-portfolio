@@ -10,12 +10,13 @@ import oracledb
 import pytest
 
 from trend_pipeline.__main__ import main
-from trend_pipeline.feeds import FeedSpec
-from trend_pipeline.keys import run_id
+from trend_pipeline.feeds import FeedSpec, load_feeds
+from trend_pipeline.http_fetch import FetchResult
+from trend_pipeline.keys import raw_key, run_id
 from trend_pipeline.load import last_validators
 from trend_pipeline.raw_store import LocalRawStore
 
-from conftest import INTERVAL_END
+from conftest import INTERVAL_END, fixture_feed_xml
 
 pytestmark = pytest.mark.integration
 
@@ -72,6 +73,50 @@ def test_backfill_with_empty_raw_root_fails_with_exit_1(
     assert "outcome=FAILURE" in captured.out
     assert len(captured.out.strip().splitlines()) == 1
     assert captured.err.count("action=missing_in_backfill") == 17
+
+
+def test_scheduled_runs_collect_then_send_stored_etag(
+    conn: oracledb.Connection, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # 네트워크 없이 정기 실행 경로 전체: 요청 → 원본 저장 → 적재 → 다음 구간이 저장된 ETag로 조건부 요청
+    xml_by_feed = fixture_feed_xml()
+    calls: list[tuple[str, str, str | None]] = []
+
+    def fake_fetch(spec: FeedSpec, *, etag: str | None, last_modified: str | None, session: object) -> FetchResult:
+        calls.append((spec.source, spec.feed, etag))
+        tag = f'"{spec.source}-{spec.feed}-v1"'
+        now = datetime.now(timezone.utc)
+        if etag == tag:
+            return FetchResult(status=304, headers={"ETag": tag}, body=None, requested_at=now, attempts=1)
+        headers = {"ETag": tag, "Content-Type": "application/rss+xml; charset=utf-8"}
+        body = xml_by_feed[(spec.source, spec.feed)]
+        return FetchResult(status=200, headers=headers, body=body, requested_at=now, attempts=1)
+
+    monkeypatch.setattr("trend_pipeline.__main__.fetch_feed", fake_fetch)
+    # 정기 실행은 지금(UTC)+5분보다 늦은 구간을 받지 않으므로 지난 정각과 이번 정각을 쓴다
+    current_hour = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    first_end, next_end = current_hour - timedelta(hours=1), current_hour
+    raw_root = tmp_path / "raw"
+    store = LocalRawStore(raw_root)
+    specs = load_feeds()
+
+    def scheduled(interval_end: datetime) -> list[str]:
+        end = interval_end.isoformat()
+        return ["run", "--interval-end", end, "--run-type", "scheduled", "--raw-root", str(raw_root)]
+
+    assert main(scheduled(first_end)) == 0
+    first = SUMMARY.fullmatch(capsys.readouterr().out.strip())
+    assert first is not None and first["outcome"] == "SUCCESS" and int(first["new"]) > 0
+    assert all(store.exists(raw_key(first_end, spec.source, spec.feed)) for spec in specs)
+    assert calls == [(spec.source, spec.feed, None) for spec in specs]  # 처음에는 저장된 validator가 없다
+
+    calls.clear()
+    assert main(scheduled(next_end)) == 0
+    second = SUMMARY.fullmatch(capsys.readouterr().out.strip())
+    # 다음 구간은 pipeline_feed_runs에 남은 피드별 ETag로 요청하고, 304라 새 기사가 없다
+    assert calls == [(spec.source, spec.feed, f'"{spec.source}-{spec.feed}-v1"') for spec in specs]
+    assert second is not None and (second["outcome"], second["new"]) == ("EMPTY", "0")
+    assert all(store.exists(raw_key(next_end, spec.source, spec.feed)) for spec in specs)
 
 
 # --- last_validators ---------------------------------------------------------
