@@ -141,6 +141,29 @@ def test_analyzer_version_mismatch_raises_runtime_error(tmp_path):
 
 
 @pytest.mark.parametrize(
+    ("change", "shown"),
+    [
+        ({"analyzer_version": "0.0.0"}, ["0.0.0", kiwipiepy.__version__]),
+        ({"analyzer": "okt"}, ["okt"]),
+        ({"input_field": "summary"}, ["summary"]),
+    ],
+    ids=["analyzer_version", "analyzer", "input_field"],
+)
+def test_require_runnable_rejects_rules_this_code_cannot_reproduce(change, shown):
+    # DB에서 복원한 규칙처럼 load_rules를 거치지 않은 규칙도 같은 기준으로 막는다
+    rules = replace(load_rules(), **change)
+    with pytest.raises(RuntimeError) as excinfo:
+        keywords.require_runnable(rules)
+    assert rules.version in str(excinfo.value)
+    for text in shown:
+        assert text in str(excinfo.value)
+
+
+def test_require_runnable_accepts_packaged_rules():
+    keywords.require_runnable(load_rules())
+
+
+@pytest.mark.parametrize(
     "override",
     [
         {"input_field": "summary"},

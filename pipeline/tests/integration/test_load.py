@@ -5,6 +5,7 @@ from collections import Counter
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
+import kiwipiepy
 import oracledb
 import pytest
 
@@ -754,3 +755,31 @@ def test_writable_rule_sets_rejects_mismatched_version(conn, rule_set: RuleSet):
 
     with pytest.raises(ValueError, match="deadbeef"):
         writable_rule_sets(conn)
+
+
+def test_writable_rule_sets_rejects_other_analyzer_version(conn, rule_set: RuleSet):
+    # 다른 kiwipiepy 버전으로 만든 BUILDING 규칙: 버전 해시는 맞지만 이 설치로는 같은 키워드를 낼 수 없다
+    other = replace(rule_set, analyzer_version="0.0.0")
+    assert ensure_rule_version(conn, rule_set) == "ACTIVE"
+    assert ensure_rule_version(conn, other) == "BUILDING"
+
+    with pytest.raises(RuntimeError) as excinfo:
+        writable_rule_sets(conn)
+
+    message = str(excinfo.value)
+    assert other.version in message and "0.0.0" in message and kiwipiepy.__version__ in message
+    assert not conn.transaction_in_progress
+
+
+@pytest.mark.parametrize(
+    "change",
+    [{"analyzer_version": "0.0.0"}, {"analyzer": "okt"}, {"input_field": "summary"}],
+    ids=["analyzer_version", "analyzer", "input_field"],
+)
+def test_load_run_rejects_rule_sets_this_code_cannot_reproduce(conn, sample_run, rules, rule_set, change):
+    other = replace(rule_set, **change)
+
+    with pytest.raises(RuntimeError, match=other.version):
+        load_run(conn, sample_run, {**rules, other.version: other})
+
+    assert counts(conn) == {table: 0 for table in V2_TABLES} | {"keyword_rule_versions": 1}

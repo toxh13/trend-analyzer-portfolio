@@ -94,12 +94,26 @@ def load_rules(path: Path | None = None) -> RuleSet:
         raise ValueError(f"min_length는 양의 정수여야 한다 (받은 값: {rules.min_length!r})")
     if not rules.pos_tags:
         raise ValueError("pos_tags는 비어 있으면 안 된다")
+    require_runnable(rules)
+    return rules
+
+
+def require_runnable(rules: RuleSet) -> None:
+    """이 설치가 그 규칙으로 같은 키워드를 뽑을 수 있는지 확인한다. 아니면 RuntimeError.
+
+    load_rules를 거치지 않은 규칙(DB의 rule_json에서 복원한 규칙 등)에도 같은 기준을 쓴다.
+    """
+    if rules.input_field != "title" or rules.analyzer != "kiwi":
+        raise RuntimeError(
+            f"규칙 {rules.version}: 이 코드는 input_field 'title'·analyzer 'kiwi' 규칙만 실행한다"
+            f" (규칙: input_field {rules.input_field!r}, analyzer {rules.analyzer!r})"
+        )
     # 형태소 분석기 버전이 달라지면 같은 제목도 다른 키워드가 나올 수 있어, 조용히 넘어가지 않고 멈춘다
     if rules.analyzer_version != kiwipiepy.__version__:
         raise RuntimeError(
-            f"kiwipiepy 버전 불일치: 규칙은 {rules.analyzer_version}, 설치된 버전은 {kiwipiepy.__version__}"
+            f"규칙 {rules.version}: kiwipiepy 버전 불일치: 규칙은 {rules.analyzer_version},"
+            f" 설치된 버전은 {kiwipiepy.__version__}"
         )
-    return rules
 
 
 def _string(data: dict, key: str) -> str:

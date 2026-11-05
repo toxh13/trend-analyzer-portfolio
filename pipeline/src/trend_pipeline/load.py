@@ -20,7 +20,7 @@ import oracledb
 from trend_pipeline.article_key import ArticleKey
 from trend_pipeline.feeds import FeedSpec
 from trend_pipeline.keys import run_id
-from trend_pipeline.keywords import RuleSet, extract_keywords
+from trend_pipeline.keywords import RuleSet, extract_keywords, require_runnable
 
 RUN_TYPES = frozenset({"scheduled", "backfill", "manual"})
 WRITABLE_STATUSES = ("ACTIVE", "BUILDING")
@@ -102,7 +102,8 @@ def load_run(conn: oracledb.Connection, data: RunLoadInput, rule_sets: Mapping[s
 
     ORA-00001(동시 실행이 같은 키를 먼저 커밋함)이면 롤백하고 처음부터 최대 MAX_RETRIES번 다시 한다.
     다시 할 때는 DB를 새로 읽어 분류·건수를 처음부터 다시 만든다. 그 밖의 오류는 롤백 후 그대로 던진다.
-    입력이 잘못되면 아무것도 쓰지 않고 ValueError를 던진다.
+    입력이 잘못되면 아무것도 쓰지 않고 ValueError를, 규칙이 이 설치로 재현할 수 없는 것이면(require_runnable)
+    아무것도 쓰지 않고 RuntimeError를 던진다.
     """
     if conn.autocommit:
         raise ValueError("autocommit이 켜진 연결로는 한 트랜잭션 적재를 보장할 수 없다")
@@ -187,7 +188,11 @@ def ensure_rule_version(conn: oracledb.Connection, rules: RuleSet) -> str:
 
 
 def writable_rule_sets(conn: oracledb.Connection) -> dict[str, RuleSet]:
-    """키워드를 써야 하는 규칙 버전(ACTIVE + BUILDING)을 rule_json에서 복원한다. 버전 순서로 돌려준다."""
+    """키워드를 써야 하는 규칙 버전(ACTIVE + BUILDING)을 rule_json에서 복원한다. 버전 순서로 돌려준다.
+
+    rule_json이 다른 버전으로 복원되면 ValueError(먼저 확인한다), 이 설치로 같은 키워드를 낼 수 없는
+    규칙(analyzer·input_field가 다르거나 kiwipiepy 버전이 다름)이면 RuntimeError.
+    """
     with conn.cursor() as cursor:
         cursor.execute(
             "SELECT rule_version, rule_json FROM keyword_rule_versions"
@@ -202,6 +207,7 @@ def writable_rule_sets(conn: oracledb.Connection) -> dict[str, RuleSet]:
         rules = RuleSet.from_json(_text(rule_json))
         if rules.version != version:
             raise ValueError(f"규칙 버전 {version}의 rule_json이 다른 버전({rules.version})으로 복원된다")
+        require_runnable(rules)
         result[version] = rules
     return result
 
@@ -275,6 +281,7 @@ def _validate(data: RunLoadInput, rule_sets: Mapping[str, RuleSet]) -> None:
     for version, rules in rule_sets.items():
         if rules.version != version:
             raise ValueError(f"규칙 버전 키 {version}가 규칙의 버전({rules.version})과 다르다")
+        require_runnable(rules)  # 다른 분석기 버전의 규칙으로 키워드를 쓰지 않는다(RuntimeError)
 
 
 # ---------------------------------------------------------------------------
