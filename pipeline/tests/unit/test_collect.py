@@ -40,7 +40,7 @@ def ok(body: str, headers=None):
 
 
 def collect(store, fetch, run_type="scheduled", validators=NO_VALIDATORS, spec=SPEC, now=REQUESTED_AT):
-    return collect_feed(spec, INTERVAL_END, run_type, store, validators, fetch, now=now)
+    return collect_feed(spec, INTERVAL_END, run_type, store, validators, fetch, clock=lambda: now)
 
 
 @pytest.fixture
@@ -201,6 +201,25 @@ def test_collecting_run_refuses_interval_outside_window(store, run_type, now, re
 def test_collecting_run_accepts_window_edges(store, now):
     fetch = FakeFetch(result=ok("<rss><channel></channel></rss>"))
     assert collect(store, fetch, now=now).action == "fetched"
+
+
+@pytest.mark.parametrize("run_type", ["scheduled", "manual"])
+def test_old_interval_with_existing_raw_is_skipped_not_refused(store, run_type):
+    # 원본이 이미 있으면 요청하지 않으므로 범위 검사보다 먼저 건너뛴다(옛 구간 원본을 다시 쓰지 않는다)
+    store.put_if_absent(KEY, b"old")
+    fetch = FakeFetch()
+    result = collect(store, fetch, run_type=run_type, now=INTERVAL_END + timedelta(days=30))
+    assert fetch.calls == []
+    assert result == CollectResult(SPEC, KEY, "skipped_exists", None, None, None)
+
+
+def test_default_clock_is_real_utc_time(store):
+    # 호출자가 시각을 넘기지 않으면 실제 시계를 읽는다(DAG가 논리 시각을 넘겨 검사를 비켜 가지 못하게)
+    current_hour = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    fetch = FakeFetch(result=ok("<rss><channel></channel></rss>"))
+    assert collect_feed(SPEC, current_hour, "scheduled", store, NO_VALIDATORS, fetch).action == "fetched"
+    old = collect_feed(SPEC, datetime(2020, 1, 1, tzinfo=timezone.utc), "scheduled", store, NO_VALIDATORS, fetch)
+    assert old.action == "failed" and old.error.startswith("too_late: ")
 
 
 def test_backfill_ignores_window(store):

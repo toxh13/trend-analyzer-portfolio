@@ -78,15 +78,9 @@ def main(argv: list[str] | None = None) -> int:
         for spec in load_feeds():
             # 백필은 요청하지 않으므로 validator 조회도 건너뛴다
             validators = (None, None) if args.run_type == "backfill" else last_validators(conn, spec)
-            # 피드마다 지금 시각을 다시 잰다. 앞 피드의 재시도가 길어지면 뒤 피드는 수집 범위를 벗어날 수 있다
+            # collect_feed는 피드마다 실제 시계로 범위를 다시 본다. 앞 피드의 재시도가 길어지면 뒤 피드는 범위를 벗어날 수 있다
             result = collect_feed(
-                spec,
-                interval_end,
-                args.run_type,
-                store,
-                validators,
-                functools.partial(fetch_feed, session=session),
-                now=_utc_now(),
+                spec, interval_end, args.run_type, store, validators, functools.partial(fetch_feed, session=session)
             )
             if result.action in _FAILURE_ACTIONS or result.error is not None:
                 error = " ".join((result.error or "").split())

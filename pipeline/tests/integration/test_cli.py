@@ -97,7 +97,8 @@ def test_scheduled_runs_collect_then_send_stored_etag(
     current_hour = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
     first_end, next_end = current_hour - timedelta(hours=1), current_hour
     clock = {"now": first_end + timedelta(minutes=2)}
-    monkeypatch.setattr("trend_pipeline.__main__._utc_now", lambda: clock["now"])
+    monkeypatch.setattr("trend_pipeline.__main__._utc_now", lambda: clock["now"])  # CLI 인자 검사
+    monkeypatch.setattr("trend_pipeline.collect._utc_now", lambda: clock["now"])  # collect_feed의 범위 검사
     raw_root = tmp_path / "raw"
     store = LocalRawStore(raw_root)
     specs = load_feeds()

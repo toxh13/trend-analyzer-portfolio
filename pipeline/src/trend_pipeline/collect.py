@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from trend_pipeline.article_key import article_key
 from trend_pipeline.envelope import build_envelope, to_bytes
@@ -20,6 +20,10 @@ _RUN_TYPES = frozenset({"scheduled", "backfill", "manual"})
 # 늦음 허용 1시간은 측정값이 아닌 임시값이다(재시도·조금 늦은 실행만 허용). 그보다 지난 구간은 백필로만 처리한다
 MAX_LATENESS = timedelta(hours=1)
 FUTURE_ALLOWANCE = timedelta(minutes=5)  # 시계 차이와 조금 이른 시작을 허용한다
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def collect_window_error(interval_end: datetime, now: datetime) -> str | None:
@@ -49,12 +53,14 @@ def collect_feed(
     validators: tuple[str | None, str | None],
     fetch: Callable[..., FetchResult],
     *,
-    now: datetime,
+    clock: Callable[[], datetime] | None = None,
 ) -> CollectResult:
     """원본이 없을 때만 요청해서 봉투로 저장한다.
 
-    요청은 구간이 now 기준 수집 범위 안일 때만 한다(collect_window_error). 범위 밖이면 요청하지 않고 failed로 돌려준다.
-    검사를 호출하는 쪽(CLI·DAG)이 아니라 여기 두어 어느 호출 경로도 건너뛰지 못하게 한다.
+    요청은 구간이 지금 기준 수집 범위 안일 때만 한다(collect_window_error). 범위 밖이면 요청하지 않고 failed로 돌려준다.
+    검사를 호출하는 쪽(CLI·DAG)이 아니라 여기 두고, 지금 시각도 호출자에게 받지 않고 실제 시계로 읽는다.
+    (DAG가 논리 시각 data_interval_end를 '지금'으로 넘기면 지난 구간도 늘 범위 안이 된다)
+    clock은 테스트가 시계를 바꿔 끼우는 자리다.
     FetchError는 failed 결과로 바꾼다. 기록용 단계(파싱·기사 키·품질 검사)의 오류는 원본 저장을 막지 않고
     error에만 남긴다. 그 밖의 예외(요청 함수·저장소 오류 등)는 삼키지 않고 올린다.
     """
@@ -73,7 +79,7 @@ def collect_feed(
     if exists:
         return CollectResult(spec, key, "skipped_exists", None, None, None)
 
-    window_error = collect_window_error(interval_end, now)
+    window_error = collect_window_error(interval_end, (clock or _utc_now)())
     if window_error is not None:
         return CollectResult(spec, None, "failed", None, None, window_error)
 
