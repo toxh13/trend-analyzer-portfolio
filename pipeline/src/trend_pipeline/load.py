@@ -111,6 +111,31 @@ def load_run(conn: oracledb.Connection, data: RunLoadInput, rule_sets: Mapping[s
     raise AssertionError("도달하지 않는다")
 
 
+def last_validators(conn: oracledb.Connection, spec: FeedSpec) -> tuple[str | None, str | None]:
+    """피드의 가장 최근 (etag, last_modified)를 돌려준다. 조건부 요청에 쓴다.
+
+    "가장 최근"은 실행의 구간 끝(pipeline_runs.interval_end) 기준이다. 응답을 받은 행(200·304)이면서
+    validator가 하나라도 있는 행만 본다. 없으면 (None, None).
+    """
+    with conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT etag, last_modified FROM ("
+            " SELECT f.etag, f.last_modified FROM pipeline_feed_runs f"
+            " JOIN pipeline_runs r ON r.run_id = f.run_id"
+            " WHERE f.source = :source AND f.feed = :feed AND f.http_status IN (200, 304)"
+            " AND (f.etag IS NOT NULL OR f.last_modified IS NOT NULL)"
+            " ORDER BY r.interval_end DESC"
+            ") WHERE ROWNUM = 1",
+            source=spec.source,
+            feed=spec.feed,
+        )
+        row = cursor.fetchone()
+    conn.rollback()  # 읽기만 했으므로 열린 트랜잭션을 남기지 않는다(load_run은 열린 트랜잭션을 거부한다)
+    if row is None:
+        return None, None
+    return _text(row[0]), _text(row[1])
+
+
 def ensure_rule_version(conn: oracledb.Connection, rules: RuleSet) -> str:
     """규칙 버전을 등록하고 그 상태를 돌려준다.
 
