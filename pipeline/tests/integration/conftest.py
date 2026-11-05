@@ -17,13 +17,14 @@ import pytest
 from testcontainers.community.oracle import OracleDbContainer
 
 from trend_pipeline.article_key import article_key, display_link
-from trend_pipeline.envelope import build_envelope
+from trend_pipeline.envelope import build_envelope, to_bytes
 from trend_pipeline.feeds import FeedSpec, load_feeds
 from trend_pipeline.keys import raw_key
 from trend_pipeline.keywords import RuleSet, extract_keywords, load_rules
 from trend_pipeline.load import FeedOutcome, LoadItem, RunLoadInput, ensure_rule_version, writable_rule_sets
 from trend_pipeline.parse import parse_feed
 from trend_pipeline.quality import check_items
+from trend_pipeline.raw_store import LocalRawStore
 from trend_pipeline.text_clean import clean_summary, clean_title
 
 IMAGE = "gvenzl/oracle-free:23-slim"
@@ -208,3 +209,41 @@ def sample_run() -> RunLoadInput:
         items.extend(feed_items)
         outcomes.append(outcome)
     return RunLoadInput(interval_end=INTERVAL_END, run_type="scheduled", items=items, feeds=outcomes)
+
+
+# 경향 고정 샘플 파일 이름은 feeds.yml의 피드 id와 다르다. 나머지 매체는 파일 이름 = 피드 id
+KHAN_FIXTURE_FEEDS = {
+    "politics": "politic_news",
+    "economy": "economy_news",
+    "society": "society_news",
+    "world": "kh_world",
+    "culture": "culture_news",
+    "science": "science_news",
+}
+
+
+def fixture_feed_xml() -> dict[tuple[str, str], str]:
+    """고정 샘플 17개를 (source, feed) 키로 읽는다."""
+    result: dict[tuple[str, str], str] = {}
+    for path in sorted(FIXTURES.glob("*.xml")):
+        source, section = path.stem.split("_", 1)
+        feed = KHAN_FIXTURE_FEEDS[section] if source == "khan" else section
+        result[(source, feed)] = path.read_text(encoding="utf-8")
+    return result
+
+
+@pytest.fixture
+def store(tmp_path: Path) -> LocalRawStore:
+    """비어 있는 로컬 원본 저장소."""
+    return LocalRawStore(tmp_path / "raw-store")
+
+
+@pytest.fixture
+def seeded_store(store: LocalRawStore) -> LocalRawStore:
+    """INTERVAL_END 구간의 17개 피드를 고정 샘플로 채운 원본 저장소(feeds.yml의 모든 피드)."""
+    xml_by_feed = fixture_feed_xml()
+    for spec in load_feeds():
+        xml = xml_by_feed[(spec.source, spec.feed)]
+        env = build_envelope(spec, INTERVAL_END, 200, {"ETag": '"fixture-etag"'}, xml)
+        assert store.put_if_absent(raw_key(INTERVAL_END, spec.source, spec.feed), to_bytes(env))
+    return store
