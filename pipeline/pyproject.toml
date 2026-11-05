@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trend-pipeline"
+# 버전의 유일한 출처. trend_pipeline.__version__ 은 설치 메타데이터에서 읽는다.
+version = "2.0.0"
+description = "Trend Analyzer v2 데이터 파이프라인: RSS 수집, 원본 봉투, Oracle silver 적재"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "requests==2.34.2",
+    "kiwipiepy==0.24.1",
+    # kiwipiepy가 쓰는 형태소 모델. 모델이 바뀌어도 같은 제목에서 다른 키워드가 나올 수 있어 함께 고정한다
+    "kiwipiepy_model==0.24.0",
+    "oracledb==26.1.0",
+    "PyYAML==6.0.3",
+    "duckdb==2.0.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest==9.2.0",
+    "testcontainers[oracle]==4.15.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# 패키지 데이터: resources/feeds.yml(Task 1), resources/keyword_rules.yml(Task 8)
+[tool.setuptools.package-data]
+trend_pipeline = ["resources/*.yml"]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: Docker(Oracle 컨테이너)가 필요한 통합 테스트",
+]
