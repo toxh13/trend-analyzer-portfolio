@@ -4,7 +4,9 @@
 - 기사: 키 (source, source_article_id)로 MERGE … WHEN NOT MATCHED THEN INSERT. 이미 있는 기사는 건드리지 않는다
 - 키워드: (기사, 규칙 버전)마다 지우고 다시 쓴다. 항상 저장된(처음 본) 제목에서 뽑으므로
   구간을 어떤 순서로 처리·재처리해도 같은 기사의 키워드는 같다
-- 실행 기록: 결정적 run_id로 MERGE. 다시 실행하면 같은 행을 갱신한다
+- 실행 기록: 결정적 run_id로 MERGE. 다시 실행하면 같은 행을 갱신한다. 건수는 구간 기준으로 고정이다:
+  저장된 first_seen_run_end가 이 구간 끝인 기사가 새 기사라서, 같은 입력을 다시 돌리면 같은 건수·결과가 나온다
+  (run_type은 처음 적재한 값을 지키고, started_at·completed_at만 가장 최근 처리를 따른다)
 - 동시 실행끼리 같은 키를 넣다가 ORA-00001이 나면 트랜잭션 전체를 처음부터 다시 한다
 """
 
@@ -46,6 +48,7 @@ class FeedOutcome:
     etag: str | None
     last_modified: str | None
     raw_key: str | None
+    fetched_at: datetime | None  # 봉투의 요청 시각(timezone 포함). 원본 봉투를 읽지 못했으면 None
     item_count: int  # 파싱된 항목 수(= 이 피드의 LoadItem 수). parse_failed는 들어가지 않는다
     parse_failed: int
     missing_required: int
@@ -63,8 +66,10 @@ class RunLoadInput:
 
 @dataclass(frozen=True)
 class LoadStats:
-    new_articles: int  # 이번 실행에서 처음 넣은 기사(서로 다른 기사 수)
-    existing_articles: int  # 이미 있던 기사(서로 다른 기사 수)
+    # 기사 건수는 서로 다른 기사 기준이고 구간 기준으로 고정이다(다시 실행해도 같다)
+    new_articles: int  # 저장된 first_seen_run_end가 이 구간 끝인 기사
+    existing_articles: int  # 다른 구간에서 처음 본 기사
+    inserted_articles: int  # 이번 시도에서 news_articles에 실제로 넣은 행 수. 다시 실행하면 0
     excluded_notice: int
     excluded_blocklist: int
     keyword_rows: int  # 이번 실행에서 news_keywords에 넣은 행 수
@@ -81,6 +86,15 @@ class _Plan:
     winners: dict[ArticleKey, LoadItem]  # 기사 키마다 이번 실행에서 처음 나온 공지 아닌 항목
     # (제목, 규칙 버전) → 키워드 집합. 새 기사의 제목을 트랜잭션 밖에서 미리 뽑아 둔 것(순수 함수 결과)
     keywords: dict[tuple[str, str], frozenset[str]]
+
+
+@dataclass(frozen=True)
+class _Stored:
+    """news_articles에 저장된 기사 한 행에서 적재에 쓰는 값."""
+
+    id: int
+    title: str  # 처음 본 제목(키워드는 항상 이 제목에서 뽑는다)
+    first_seen_run_end: datetime  # naive UTC. 이 구간 끝과 같으면 이 구간의 새 기사
 
 
 def load_run(conn: oracledb.Connection, data: RunLoadInput, rule_sets: Mapping[str, RuleSet]) -> LoadStats:
@@ -236,6 +250,8 @@ def _validate(data: RunLoadInput, rule_sets: Mapping[str, RuleSet]) -> None:
     for outcome in data.feeds:
         if outcome.error is not None and not outcome.error.strip():
             raise ValueError(f"{outcome.feed.source}/{outcome.feed.feed}: 실패 피드의 error가 비어 있다")
+        if outcome.fetched_at is not None:
+            _to_db_time(outcome.fetched_at)
 
     per_feed: Counter[FeedSpec] = Counter()
     known = {outcome.feed for outcome in data.feeds}
@@ -284,6 +300,9 @@ def _load_once(
 
     inserted = _merge_articles(cursor, [plan.winners[key] for key in loadable], plan.interval_end)
     stored = _stored_articles(cursor, loadable)
+    # 실행 기록은 구간 기준: 이번 시도에서 넣었는지가 아니라 저장된 처음 본 구간이 이 구간인지로 센다.
+    # 그래서 같은 구간을 다시 처리해도, 동시 실행이 먼저 넣었어도 건수가 같다
+    belongs = {key for key in loadable if stored[key].first_seen_run_end == plan.interval_end}
 
     # 키워드 = f(저장된 제목, 규칙 버전). 이번 실행 항목의 제목이 바뀌었어도 처음 본 제목을 쓴다
     def keywords_for(title: str, version: str) -> frozenset[str]:
@@ -291,22 +310,23 @@ def _load_once(
         return found if found is not None else extract_keywords(title, rule_sets[version])
 
     versions = sorted(rule_sets)
-    by_id = sorted(loadable, key=lambda key: stored[key][0])
-    pairs = [(stored[key][0], version) for key in by_id for version in versions]
+    by_id = sorted(loadable, key=lambda key: stored[key].id)
+    pairs = [(stored[key].id, version) for key in by_id for version in versions]
     keyword_rows = [
-        (stored[key][0], keyword, version)
+        (stored[key].id, keyword, version)
         for key in by_id
         for version in versions
-        for keyword in sorted(keywords_for(stored[key][1], version))
+        for keyword in sorted(keywords_for(stored[key].title, version))
     ]
     _delete_keywords(cursor, pairs)
     _insert_keywords(cursor, keyword_rows)
 
-    feed_counts = _classify(plan.ordered, blocked, inserted)
-    new_articles = len(inserted)
+    feed_counts = _classify(plan.ordered, blocked, belongs)
+    new_articles = len(belongs)
     stats = LoadStats(
         new_articles=new_articles,
         existing_articles=len(loadable) - new_articles,
+        inserted_articles=len(inserted),
         excluded_notice=sum(c["excluded_notice"] for c in feed_counts.values()),
         excluded_blocklist=sum(c["excluded_blocklist"] for c in feed_counts.values()),
         keyword_rows=len(keyword_rows),
@@ -318,9 +338,13 @@ def _load_once(
 
 
 def _classify(
-    ordered: list[LoadItem], blocked: set[ArticleKey], inserted: set[ArticleKey]
+    ordered: list[LoadItem], blocked: set[ArticleKey], belongs: set[ArticleKey]
 ) -> dict[FeedSpec, Counter[str]]:
-    """항목마다 한 칸에만 센다: 공지 → 차단 → 이번 실행에서 이미 나옴 → 새 기사/이미 있음."""
+    """항목마다 한 칸에만 센다: 공지 → 차단 → 이번 실행에서 이미 나옴 → 새 기사/이미 있음.
+
+    belongs = 저장된 first_seen_run_end가 이 구간 끝인 기사. 그 기사가 이번 실행에서 처음 나온 항목만
+    새 기사이고, 나머지(같은 실행의 중복, 다른 구간에서 처음 본 기사)는 이미 있음이다.
+    """
     counts: dict[FeedSpec, Counter[str]] = {}
     taken: set[ArticleKey] = set()
     for item in ordered:
@@ -333,7 +357,7 @@ def _classify(
             bucket["existing_articles"] += 1  # 같은 실행의 앞 피드가 이미 가져간 기사
         else:
             taken.add(item.key)
-            bucket["new_articles" if item.key in inserted else "existing_articles"] += 1
+            bucket["new_articles" if item.key in belongs else "existing_articles"] += 1
     return counts
 
 
@@ -358,7 +382,7 @@ VALUES
 
 
 def _merge_articles(cursor: oracledb.Cursor, items: list[LoadItem], interval_end: datetime) -> set[ArticleKey]:
-    """없는 기사만 넣는다. 행마다 영향받은 행 수(1 = 새로 넣음, 0 = 이미 있음)로 새 기사를 가려낸다."""
+    """없는 기사만 넣는다. 행마다 영향받은 행 수(1 = 새로 넣음, 0 = 이미 있음)로 이번 시도가 넣은 기사를 가려낸다."""
     if not items:
         return set()
     rows = [
@@ -389,12 +413,14 @@ def _merge_articles(cursor: oracledb.Cursor, items: list[LoadItem], interval_end
     return {item.key for item, rowcount in zip(items, affected) if rowcount == 1}
 
 
-def _stored_articles(cursor: oracledb.Cursor, keys: list[ArticleKey]) -> dict[ArticleKey, tuple[int, str]]:
-    """기사 키 → (id, 저장된 제목). MERGE 뒤에 읽으므로 이번에 넣은 기사와 이미 있던 기사가 모두 나온다."""
-    found = _select_by_keys(cursor, "SELECT source, source_article_id, id, title FROM news_articles", keys)
+def _stored_articles(cursor: oracledb.Cursor, keys: list[ArticleKey]) -> dict[ArticleKey, _Stored]:
+    """기사 키 → 저장된 행. MERGE 뒤에 읽으므로 이번에 넣은 기사와 이미 있던 기사가 모두 나온다."""
+    found = _select_by_keys(
+        cursor, "SELECT source, source_article_id, id, title, first_seen_run_end FROM news_articles", keys
+    )
     stored = {
-        ArticleKey(source, source_article_id): (article_id, title)
-        for source, source_article_id, article_id, title in found
+        ArticleKey(source, source_article_id): _Stored(article_id, title, first_seen_run_end)
+        for source, source_article_id, article_id, title, first_seen_run_end in found
     }
     missing = [key for key in keys if key not in stored]
     if missing:
@@ -427,7 +453,7 @@ USING (
 ) s
 ON (t.run_id = s.run_id)
 WHEN MATCHED THEN UPDATE SET
-    t.run_type = s.run_type, t.outcome = s.outcome,
+    t.outcome = s.outcome,
     t.feed_count = s.feed_count, t.failed_feed_count = s.failed_feed_count,
     t.new_articles = s.new_articles, t.existing_articles = s.existing_articles,
     t.excluded_notice = s.excluded_notice, t.excluded_blocklist = s.excluded_blocklist,
@@ -451,7 +477,9 @@ def _merge_run(
     stats: LoadStats,
     started_at: datetime,
 ) -> None:
-    # 실행 행은 커밋 직전에 쓴다: completed_at(DB 시각)이 적재를 마친 시각이 된다
+    # 실행 행은 커밋 직전에 쓴다: completed_at(DB 시각)이 적재를 마친 시각이 된다.
+    # 다시 실행하면 건수·결과·started_at·completed_at을 갱신하지만 run_type은 처음 적재한 값을 지킨다
+    # (정기 실행을 백필로 다시 처리해도 그 구간을 처음 만든 실행 종류가 남는다)
     cursor.setinputsizes(interval_end=oracledb.DB_TYPE_TIMESTAMP, started_at=oracledb.DB_TYPE_TIMESTAMP)
     cursor.execute(
         _MERGE_RUN,
@@ -475,8 +503,8 @@ _MERGE_FEED_RUN = """
 MERGE INTO pipeline_feed_runs t
 USING (
     SELECT :run_id AS run_id, :source AS source, :feed AS feed, :http_status AS http_status,
-           :etag AS etag, :last_modified AS last_modified, :raw_key AS raw_key, :item_count AS item_count,
-           :new_articles AS new_articles, :existing_articles AS existing_articles,
+           :etag AS etag, :last_modified AS last_modified, :raw_key AS raw_key, :fetched_at AS fetched_at,
+           :item_count AS item_count, :new_articles AS new_articles, :existing_articles AS existing_articles,
            :excluded_notice AS excluded_notice, :excluded_blocklist AS excluded_blocklist,
            :parse_failed AS parse_failed, :missing_required AS missing_required,
            :duplicate_keys AS duplicate_keys, :error AS error
@@ -485,15 +513,16 @@ USING (
 ON (t.run_id = s.run_id AND t.source = s.source AND t.feed = s.feed)
 WHEN MATCHED THEN UPDATE SET
     t.http_status = s.http_status, t.etag = s.etag, t.last_modified = s.last_modified, t.raw_key = s.raw_key,
-    t.item_count = s.item_count, t.new_articles = s.new_articles, t.existing_articles = s.existing_articles,
+    t.fetched_at = s.fetched_at, t.item_count = s.item_count, t.new_articles = s.new_articles,
+    t.existing_articles = s.existing_articles,
     t.excluded_notice = s.excluded_notice, t.excluded_blocklist = s.excluded_blocklist,
     t.parse_failed = s.parse_failed, t.missing_required = s.missing_required,
     t.duplicate_keys = s.duplicate_keys, t.error = s.error
 WHEN NOT MATCHED THEN INSERT
-    (run_id, source, feed, http_status, etag, last_modified, raw_key, item_count, new_articles,
+    (run_id, source, feed, http_status, etag, last_modified, raw_key, fetched_at, item_count, new_articles,
      existing_articles, excluded_notice, excluded_blocklist, parse_failed, missing_required, duplicate_keys, error)
 VALUES
-    (s.run_id, s.source, s.feed, s.http_status, s.etag, s.last_modified, s.raw_key, s.item_count,
+    (s.run_id, s.source, s.feed, s.http_status, s.etag, s.last_modified, s.raw_key, s.fetched_at, s.item_count,
      s.new_articles, s.existing_articles, s.excluded_notice, s.excluded_blocklist, s.parse_failed,
      s.missing_required, s.duplicate_keys, s.error)
 """
@@ -514,6 +543,7 @@ def _merge_feed_runs(
                 "etag": outcome.etag,
                 "last_modified": outcome.last_modified,
                 "raw_key": outcome.raw_key,
+                "fetched_at": None if outcome.fetched_at is None else _to_db_time(outcome.fetched_at),
                 "item_count": outcome.item_count,
                 "new_articles": counted["new_articles"],
                 "existing_articles": counted["existing_articles"],
@@ -526,8 +556,8 @@ def _merge_feed_runs(
             }
         )
     _delete_stale_feed_runs(cursor, run, feeds)
-    # 값이 모두 None인 열도 있어 숫자 열의 바인드 형식을 정해 둔다
-    cursor.setinputsizes(http_status=oracledb.DB_TYPE_NUMBER)
+    # 값이 모두 None인 열도 있어 바인드 형식을 정해 둔다. 시각은 소수 초가 잘리지 않게 TIMESTAMP로 넣는다
+    cursor.setinputsizes(http_status=oracledb.DB_TYPE_NUMBER, fetched_at=oracledb.DB_TYPE_TIMESTAMP)
     cursor.executemany(_MERGE_FEED_RUN, rows)
 
 

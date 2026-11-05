@@ -1,5 +1,8 @@
 """처리 작업(process_interval) 통합 테스트: 원본 저장소 → 실버 테이블, 피드별 결과 기록, 재처리 멱등."""
 
+from dataclasses import replace
+from datetime import timedelta
+
 import oracledb
 import pytest
 
@@ -9,7 +12,7 @@ from trend_pipeline.feeds import load_feeds
 from trend_pipeline.keys import raw_key
 from trend_pipeline.process import process_interval
 
-from conftest import INTERVAL_END, V2_TABLES
+from conftest import INTERVAL_END, V2_TABLES, fixture_feed_xml
 
 pytestmark = pytest.mark.integration
 
@@ -32,6 +35,10 @@ def feed_run(conn: oracledb.Connection, source: str, feed: str) -> tuple:
             f=feed,
         )
         return cursor.fetchone()
+
+
+def fetched_at(conn: oracledb.Connection, source: str, feed: str):
+    return scalar(conn, "SELECT fetched_at FROM pipeline_feed_runs WHERE source = :s AND feed = :f", s=source, f=feed)
 
 
 def key_of(source: str, feed: str) -> str:
@@ -66,9 +73,35 @@ def test_reprocessing_same_interval_is_idempotent(conn, seeded_store):
     assert table_counts(conn) == before
     assert before["pipeline_feed_runs"] == 17
     assert before["pipeline_runs"] == 1
-    assert second.new_articles == 0
-    assert second.existing_articles == first.new_articles
-    assert second.keyword_rows == first.keyword_rows
+    # 재처리해도 결과와 건수가 같다(구간 기준). 이번 시도에서 실제로 넣은 기사만 0이다
+    assert first.inserted_articles == first.new_articles > 0
+    assert second.inserted_articles == 0
+    assert replace(second, inserted_articles=first.inserted_articles) == first
+    assert second.outcome == "SUCCESS"
+
+
+def test_fetched_at_comes_from_envelope_requested_at(conn, seeded_store):
+    # 처리한 피드는 봉투의 요청 시각(200·304·파싱 실패 모두), 원본이 없는 피드는 NULL
+    yna_xml = fixture_feed_xml()[("yna", "politics")]
+    requested = {
+        ("yna", "politics"): (200, yna_xml, INTERVAL_END + timedelta(seconds=2, microseconds=345000)),
+        ("khan", "politic_news"): (304, None, INTERVAL_END + timedelta(seconds=7)),
+        ("donga", "economy"): (200, "<rss><channel><item>", INTERVAL_END + timedelta(seconds=9, microseconds=1)),
+    }
+    for (source, feed), (status, body, at) in requested.items():
+        seeded_store.delete_prefix(key_of(source, feed))
+        env = build_envelope(spec_of(source, feed), at, status, {"ETag": '"x"'}, body)
+        assert seeded_store.put_if_absent(key_of(source, feed), to_bytes(env))
+    seeded_store.delete_prefix(key_of("khan", "kh_world"))
+
+    process_interval(INTERVAL_END, "backfill", seeded_store, conn, [])
+
+    for (source, feed), (_, _, at) in requested.items():
+        assert fetched_at(conn, source, feed) == at.replace(tzinfo=None), (source, feed)
+    assert feed_run(conn, "donga", "economy")[2].startswith("FeedParseError: ")
+    assert fetched_at(conn, "yna", "society") == INTERVAL_END.replace(tzinfo=None)  # seeded_store의 요청 시각
+    assert feed_run(conn, "khan", "kh_world")[2] == "raw_missing"
+    assert fetched_at(conn, "khan", "kh_world") is None
 
 
 def test_304_only_interval_loads_zero_articles_and_outcome_is_empty(conn, store):

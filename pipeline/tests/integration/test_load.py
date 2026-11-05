@@ -11,6 +11,7 @@ import pytest
 from trend_pipeline import db, load
 from trend_pipeline.article_key import ArticleKey
 from trend_pipeline.feeds import FeedSpec
+from trend_pipeline.keys import run_id
 from trend_pipeline.keywords import RuleSet, extract_keywords
 from trend_pipeline.load import (
     FeedOutcome,
@@ -74,36 +75,48 @@ def loadable_keys(run: RunLoadInput) -> set[ArticleKey]:
     return {item.key for item in run.items if not item.title_excluded}
 
 
-def feed_rows(conn: oracledb.Connection) -> dict[tuple[str, str], dict]:
+def feed_rows(conn: oracledb.Connection, interval_end: datetime | None = None) -> dict[tuple[str, str], dict]:
+    """피드 실행 행. interval_end를 주면 그 구간의 실행만 본다."""
     columns = (
-        "source, feed, http_status, etag, last_modified, raw_key, item_count, new_articles, existing_articles,"
-        " excluded_notice, excluded_blocklist, parse_failed, missing_required, duplicate_keys, error"
+        "source, feed, http_status, etag, last_modified, raw_key, fetched_at, item_count, new_articles,"
+        " existing_articles, excluded_notice, excluded_blocklist, parse_failed, missing_required, duplicate_keys, error"
     )
     names = [name.strip() for name in columns.split(",")]
+    where, binds = ("", {}) if interval_end is None else (" WHERE run_id = :run_id", {"run_id": run_id(interval_end)})
     result = {}
-    for row in rows(conn, f"SELECT {columns} FROM pipeline_feed_runs"):
+    for row in rows(conn, f"SELECT {columns} FROM pipeline_feed_runs{where}", **binds):
         record = dict(zip(names, row))
         result[(record["source"], record["feed"])] = record
     return result
 
 
-def run_row(conn: oracledb.Connection) -> dict:
+def run_row(conn: oracledb.Connection, interval_end: datetime | None = None) -> dict:
+    """실행 행 하나. interval_end가 없으면 표에 행이 하나뿐이어야 한다."""
     columns = (
         "run_id, interval_end, run_type, outcome, feed_count, failed_feed_count, new_articles, existing_articles,"
         " excluded_notice, excluded_blocklist, parse_failed, keyword_rows, started_at, completed_at"
     )
     names = [name.strip() for name in columns.split(",")]
-    (row,) = rows(conn, f"SELECT {columns} FROM pipeline_runs")
+    where, binds = ("", {}) if interval_end is None else (" WHERE run_id = :run_id", {"run_id": run_id(interval_end)})
+    (row,) = rows(conn, f"SELECT {columns} FROM pipeline_runs{where}", **binds)
     return dict(zip(names, row))
 
 
-def outcome_for(spec: FeedSpec, item_count: int, error: str | None = None) -> FeedOutcome:
+def without_times(record: dict) -> dict:
+    """실행 행에서 처리할 때마다 바뀌는 시각(started_at, completed_at)을 뺀다."""
+    return {name: value for name, value in record.items() if name not in ("started_at", "completed_at")}
+
+
+def outcome_for(
+    spec: FeedSpec, item_count: int, error: str | None = None, fetched_at: datetime | None = None
+) -> FeedOutcome:
     return FeedOutcome(
         feed=spec,
         status=None if error else 200,
         etag=None,
         last_modified=None,
         raw_key=None,
+        fetched_at=fetched_at,
         item_count=item_count,
         parse_failed=0,
         missing_required=0,
@@ -130,19 +143,74 @@ def article(
 def test_same_run_twice_gives_same_rows(conn, sample_run, rules):
     s1 = load_run(conn, sample_run, rules)
     rows1, silver1 = counts(conn), silver_rows(conn)
+    run1, feeds1 = run_row(conn), feed_rows(conn)
 
     s2 = load_run(conn, sample_run, rules)
 
     assert counts(conn) == rows1
     assert silver_rows(conn) == silver1
-    assert s1.new_articles == len(loadable_keys(sample_run)) > 0
-    assert s2.new_articles == 0 and s2.existing_articles == s1.new_articles
-    assert s2.keyword_rows == s1.keyword_rows > 0
-    assert (s1.outcome, s2.outcome) == ("SUCCESS", "EMPTY")
+    assert s1.new_articles == s1.inserted_articles == len(loadable_keys(sample_run)) > 0
+    assert s1.existing_articles == 0 and s1.outcome == "SUCCESS" and s1.keyword_rows > 0
+    # 실행 기록은 구간 기준으로 고정된다: 다시 실행해도 건수·결과가 같고, 이번 시도에서 넣은 행만 0이다
+    assert s2.inserted_articles == 0
+    assert replace(s2, inserted_articles=s1.inserted_articles) == s1
     assert rows1["pipeline_runs"] == 1 and rows1["pipeline_feed_runs"] == 2
-    # 다시 실행하면 같은 실행 행을 갱신한다
+    # 다시 실행하면 같은 실행 행을 갱신하지만 시각을 빼면 값이 같다. 피드 행은 모두 같다
+    run2 = run_row(conn)
+    assert without_times(run2) == without_times(run1)
+    assert run2["started_at"] >= run1["started_at"] and run2["completed_at"] >= run1["completed_at"]
+    assert feed_rows(conn) == feeds1
+
+
+def test_article_seen_again_in_next_interval_counts_as_existing(conn, rules):
+    politics = feed_spec("yna", "정치")
+    seen, fresh = "AKR20261104000900009", "AKR20261104001000010"
+    later_end = INTERVAL_END + timedelta(hours=1)
+    first = RunLoadInput(
+        interval_end=INTERVAL_END,
+        run_type="scheduled",
+        items=[article(politics, seen, "국회 예산안 처리 합의")],
+        feeds=[outcome_for(politics, 1)],
+    )
+    second = RunLoadInput(
+        interval_end=later_end,
+        run_type="scheduled",
+        items=[article(politics, seen, "국회 예산안 처리 합의"), article(politics, fresh, "반도체 수출 급증 전망")],
+        feeds=[outcome_for(politics, 2)],
+    )
+
+    s1 = load_run(conn, first, rules)
+    first_run, first_feeds = run_row(conn, INTERVAL_END), feed_rows(conn, INTERVAL_END)
+    s2 = load_run(conn, second, rules)
+
+    # N에서 처음 본 기사는 N+1에서 이미 있음이다(실행·피드 모두). N의 기록은 바뀌지 않는다
+    assert (s1.new_articles, s1.existing_articles, s1.inserted_articles) == (1, 0, 1)
+    assert (s2.new_articles, s2.existing_articles, s2.inserted_articles, s2.outcome) == (1, 1, 1, "SUCCESS")
+    later_feed = feed_rows(conn, later_end)[("yna", "politics")]
+    assert (later_feed["new_articles"], later_feed["existing_articles"]) == (1, 1)
+    later_run = run_row(conn, later_end)
+    assert (later_run["new_articles"], later_run["existing_articles"]) == (1, 1)
+    assert run_row(conn, INTERVAL_END) == first_run
+    assert feed_rows(conn, INTERVAL_END) == first_feeds
+
+    # N을 다시 처리해도 그 기사는 여전히 N 소속이다. 두 구간의 기록이 모두 그대로다
+    again = load_run(conn, first, rules)
+    assert replace(again, inserted_articles=s1.inserted_articles) == s1 and again.inserted_articles == 0
+    assert without_times(run_row(conn, INTERVAL_END)) == without_times(first_run)
+    assert feed_rows(conn, INTERVAL_END) == first_feeds
+    assert without_times(run_row(conn, later_end)) == without_times(later_run)
+
+
+def test_rerun_keeps_run_type_of_first_load(conn, sample_run, rules):
+    load_run(conn, sample_run, rules)
+    first = run_row(conn)
+
+    load_run(conn, replace(sample_run, run_type="backfill"), rules)
+
+    # run_type은 처음 적재한 값 그대로, 시각은 가장 최근 처리 기준이다
     record = run_row(conn)
-    assert (record["outcome"], record["new_articles"], record["existing_articles"]) == ("EMPTY", 0, s1.new_articles)
+    assert (first["run_type"], record["run_type"]) == ("scheduled", "scheduled")
+    assert record["started_at"] >= first["started_at"] and record["completed_at"] >= first["completed_at"]
 
 
 @pytest.mark.parametrize("preloaded", [False, True], ids=["first-load", "rerun"])
@@ -172,9 +240,9 @@ def test_concurrent_runs_no_duplicates_no_errors(conn, sample_run, rules, preloa
 
     assert errors == []
     assert all(isinstance(stats, LoadStats) for stats in results)
-    # 처음 적재: 한쪽이 모두 새로 넣고 다른 쪽은 (ORA-00001 재시도 뒤) 모두 이미 있음으로 본다
-    assert sum(stats.new_articles for stats in results) == (0 if preloaded else expected)
-    assert sum(stats.existing_articles for stats in results) == (2 * expected if preloaded else expected)
+    # 실행 기록은 구간 기준이라 둘 다 같은 건수를 본다. 실제로 넣은 행은 (처음 적재일 때) 한쪽에만 있다
+    assert all((stats.new_articles, stats.existing_articles) == (expected, 0) for stats in results)
+    assert sum(stats.inserted_articles for stats in results) == (0 if preloaded else expected)
     assert results[0].keyword_rows == results[1].keyword_rows > 0
     assert duplicate_rows(conn) == ([], [])
     assert counts(conn) == {
@@ -219,8 +287,8 @@ def test_unique_violation_reruns_whole_transaction_from_scratch(conn, sample_run
     stats = load_run(conn, sample_run, rules)
 
     assert len(calls) == 2
-    # 첫 시도의 기사 INSERT는 롤백됐으므로 두 번째 시도도 모두 새 기사로 센다(시도별 상태가 남지 않는다)
-    assert stats.new_articles == len(loadable_keys(sample_run))
+    # 첫 시도의 기사 INSERT는 롤백됐으므로 두 번째 시도가 모두 다시 넣는다(시도별 상태가 남지 않는다)
+    assert stats.new_articles == stats.inserted_articles == len(loadable_keys(sample_run))
     assert stats.existing_articles == 0
     assert counts(conn)["news_keywords"] == stats.keyword_rows == calls[1]
     assert duplicate_rows(conn) == ([], [])
@@ -281,8 +349,8 @@ def test_key_lookups_split_into_chunks(conn, sample_run, rules, monkeypatch):
     s2 = load_run(conn, sample_run, rules)
 
     expected = len(loadable_keys(sample_run)) - 1
-    assert (s1.new_articles, s1.excluded_blocklist) == (expected, 1)
-    assert (s2.new_articles, s2.existing_articles) == (0, expected)
+    assert (s1.new_articles, s1.inserted_articles, s1.excluded_blocklist) == (expected, expected, 1)
+    assert (s2.new_articles, s2.existing_articles, s2.inserted_articles) == (expected, 0, 0)
     assert counts(conn)["news_articles"] == expected
 
 
@@ -309,8 +377,8 @@ def test_blocklisted_article_never_loaded_even_on_rerun(conn, sample_run, rules)
     )
     assert found == [(0,)]
     assert s1.excluded_blocklist == s2.excluded_blocklist == blocked_items
-    assert s1.new_articles == len(loadable_keys(sample_run)) - 1
-    assert s2.new_articles == 0
+    assert s1.new_articles == s2.new_articles == len(loadable_keys(sample_run)) - 1
+    assert s2.inserted_articles == 0
     assert feed_rows(conn)[(target.feed.source, target.feed.feed)]["excluded_blocklist"] == blocked_items
 
 
@@ -432,7 +500,7 @@ def test_times_are_stored_as_utc(conn, rules):
         interval_end=datetime(2026, 11, 4, 13, 0, tzinfo=KST),  # = 04:00 UTC
         run_type="manual",
         items=[article(politics, "AKR20261104000400004", "국회 본회의 개최", published_at=published_kst)],
-        feeds=[outcome_for(politics, 1)],
+        feeds=[outcome_for(politics, 1, fetched_at=datetime(2026, 11, 4, 13, 0, 2, 500000, tzinfo=KST))],
     )
     before = datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -441,6 +509,8 @@ def test_times_are_stored_as_utc(conn, rules):
     assert rows(conn, "SELECT published_at, first_seen_run_end FROM news_articles") == [
         (datetime(2026, 11, 4, 3, 15), datetime(2026, 11, 4, 4, 0))
     ]
+    # 피드를 받은 시각도 UTC로, 소수 초까지 저장한다
+    assert rows(conn, "SELECT fetched_at FROM pipeline_feed_runs") == [(datetime(2026, 11, 4, 4, 0, 2, 500000),)]
     record = run_row(conn)
     assert record["interval_end"] == datetime(2026, 11, 4, 4, 0)
     # 실행 시각도 UTC다(KST로 들어가면 9시간 어긋난다)
@@ -512,6 +582,7 @@ def test_feed_run_counts_reconcile(conn, sample_run, rules):
         assert (record["http_status"], record["etag"], record["raw_key"], record["error"]) == (
             200, '"fixture-etag"', outcome.raw_key, None
         )
+        assert record["fetched_at"] == outcome.fetched_at.astimezone(timezone.utc).replace(tzinfo=None)
         assert (record["parse_failed"], record["missing_required"], record["duplicate_keys"]) == (
             outcome.parse_failed, outcome.missing_required, outcome.duplicate_keys
         )
@@ -548,9 +619,10 @@ def test_rerun_with_fewer_feeds_drops_stale_feed_rows(conn, sample_run, rules):
     load_run(conn, only_first, rules)
 
     # 그 입력으로 처음 실행한 것과 같은 상태: A 행만 남고 실행 행의 피드 수도 맞는다
+    # (A의 기사는 이 구간에서 처음 봤으므로 다시 실행해도 새 기사다 → SUCCESS)
     assert set(feed_rows(conn)) == {(first_feed.feed.source, first_feed.feed.feed)}
     record = run_row(conn)
-    assert (record["feed_count"], record["failed_feed_count"], record["outcome"]) == (1, 0, "EMPTY")
+    assert (record["feed_count"], record["failed_feed_count"], record["outcome"]) == (1, 0, "SUCCESS")
 
 
 def test_outcome_partial_failure_when_some_feeds_failed(conn, sample_run, rules):
@@ -583,7 +655,13 @@ def test_outcome_failure_when_all_feeds_failed(conn, rules):
     stats = load_run(conn, run, rules)
 
     assert stats == LoadStats(
-        new_articles=0, existing_articles=0, excluded_notice=0, excluded_blocklist=0, keyword_rows=0, outcome="FAILURE"
+        new_articles=0,
+        existing_articles=0,
+        inserted_articles=0,
+        excluded_notice=0,
+        excluded_blocklist=0,
+        keyword_rows=0,
+        outcome="FAILURE",
     )
     record = run_row(conn)
     assert (record["outcome"], record["run_type"], record["failed_feed_count"]) == ("FAILURE", "backfill", 2)
@@ -600,11 +678,17 @@ def _unknown_feed(run: RunLoadInput) -> RunLoadInput:
     return replace(run, feeds=run.feeds[1:])
 
 
+def _naive_fetched_at(run: RunLoadInput) -> RunLoadInput:
+    first = run.feeds[0]
+    return replace(run, feeds=[replace(first, fetched_at=datetime(2026, 11, 4, 3, 0, 2)), *run.feeds[1:]])
+
+
 @pytest.mark.parametrize(
     "broken",
     [
         pytest.param(_mismatched_count, id="item_count-mismatch"),
         pytest.param(_unknown_feed, id="item-feed-not-in-feeds"),
+        pytest.param(_naive_fetched_at, id="naive-fetched_at"),
         pytest.param(lambda run: replace(run, feeds=[], items=[]), id="no-feeds"),
         pytest.param(lambda run: replace(run, run_type="hourly"), id="bad-run-type"),
     ],
@@ -641,6 +725,22 @@ def test_ensure_rule_version_active_then_building_then_existing(conn, rule_set):
     conn.commit()
     assert writable_rule_sets(conn) == {rule_set.version: rule_set}
     assert ensure_rule_version(conn, other) == "RETIRED"
+
+
+def test_keywords_need_a_registered_rule_version(conn, rule_set: RuleSet):
+    # news_keywords.rule_version은 keyword_rule_versions를 참조한다: 등록하지 않은 버전으로는 쓸 수 없다
+    politics = feed_spec("yna", "정치")
+    run = RunLoadInput(
+        interval_end=INTERVAL_END,
+        run_type="manual",
+        items=[article(politics, "AKR20261104001100011", "국회 예산안 처리 합의")],
+        feeds=[outcome_for(politics, 1)],
+    )
+
+    with pytest.raises(oracledb.IntegrityError, match="ORA-02291"):
+        load_run(conn, run, {rule_set.version: rule_set})
+
+    assert counts(conn) == {table: 0 for table in V2_TABLES}
 
 
 def test_writable_rule_sets_rejects_mismatched_version(conn, rule_set: RuleSet):

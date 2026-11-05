@@ -190,6 +190,7 @@ def load_items(spec: FeedSpec, xml: str, interval_end: datetime = INTERVAL_END) 
         etag=env.etag,
         last_modified=env.last_modified,
         raw_key=raw_key(interval_end, spec.source, spec.feed),
+        fetched_at=env.requested_at,
         item_count=len(items),
         parse_failed=parsed.parse_failed,
         missing_required=quality.missing_required,

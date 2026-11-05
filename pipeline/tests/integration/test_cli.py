@@ -1,5 +1,6 @@
 """CLI 통합 테스트: 원본 저장소 → 실버 테이블 끝까지 실행, 종료 코드, validator 조회."""
 
+import re
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
@@ -19,6 +20,10 @@ from conftest import INTERVAL_END
 pytestmark = pytest.mark.integration
 
 END_ARG = "2026-11-04T03:00:00Z"
+SUMMARY = re.compile(
+    r"run_id=(?P<run_id>\S+) outcome=(?P<outcome>[A-Z_]+) new=(?P<new>\d+) existing=(?P<existing>\d+)"
+    r" inserted=(?P<inserted>\d+) keywords=(?P<keywords>\d+)"
+)
 
 
 def cli_args(raw_root: Path, run_type: str = "backfill") -> list[str]:
@@ -32,13 +37,19 @@ def test_backfill_from_seeded_store_succeeds_then_is_idempotent(
     assert main(cli_args(raw_root)) == 0
     first = capsys.readouterr().out.strip().splitlines()
     assert len(first) == 1
-    assert first[0].startswith(f"run_id={run_id(INTERVAL_END)} outcome=SUCCESS new=")
-    assert " new=0 " not in first[0]
+    match = SUMMARY.fullmatch(first[0])
+    assert match is not None, first[0]
+    assert match["run_id"] == run_id(INTERVAL_END) and match["outcome"] == "SUCCESS"
+    assert int(match["new"]) > 0 and match["inserted"] == match["new"] and match["existing"] == "0"
 
+    # 같은 원본을 다시 처리해도 실행 기록은 같다(구간 기준). 이번에 넣은 기사만 0이다
     assert main(cli_args(raw_root)) == 0
-    second = capsys.readouterr().out.strip()
-    assert "outcome=EMPTY" in second  # 새 기사가 없으면 EMPTY(실패 아님)
-    assert " new=0 " in second
+    second = SUMMARY.fullmatch(capsys.readouterr().out.strip())
+    assert second is not None
+    assert (second["outcome"], second["new"], second["existing"], second["keywords"]) == (
+        "SUCCESS", match["new"], "0", match["keywords"]
+    )
+    assert second["inserted"] == "0"
 
 
 def test_module_entry_point(conn: oracledb.Connection, seeded_store: LocalRawStore, tmp_path: Path) -> None:

@@ -71,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print(
         f"run_id={run_id(interval_end)} outcome={stats.outcome} new={stats.new_articles} "
-        f"existing={stats.existing_articles} keywords={stats.keyword_rows}"
+        f"existing={stats.existing_articles} inserted={stats.inserted_articles} keywords={stats.keyword_rows}"
     )
     return 1 if stats.outcome == "FAILURE" else 0
 

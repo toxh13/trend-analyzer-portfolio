@@ -31,17 +31,6 @@ CREATE TABLE news_articles (
     )
 );
 
-CREATE TABLE news_keywords (
-    article_id NUMBER NOT NULL,
-    keyword VARCHAR2(255 CHAR) NOT NULL,
-    rule_version VARCHAR2(8) NOT NULL,
-
-    -- 파이프라인은 (기사, 규칙 버전) 단위로 지우고 다시 씁니다.
-    CONSTRAINT pk_news_keywords PRIMARY KEY (article_id, keyword, rule_version),
-    CONSTRAINT fk_news_keywords_article FOREIGN KEY (article_id)
-        REFERENCES news_articles (id)
-);
-
 CREATE TABLE keyword_rule_versions (
     -- 규칙 파일 정규화 JSON의 sha256 앞 8자리
     rule_version VARCHAR2(8) NOT NULL,
@@ -57,21 +46,40 @@ CREATE TABLE keyword_rule_versions (
 CREATE UNIQUE INDEX uk_keyword_rule_versions_active
     ON keyword_rule_versions (CASE WHEN status = 'ACTIVE' THEN 1 END);
 
+CREATE TABLE news_keywords (
+    article_id NUMBER NOT NULL,
+    keyword VARCHAR2(255 CHAR) NOT NULL,
+    rule_version VARCHAR2(8) NOT NULL,
+
+    -- 파이프라인은 (기사, 규칙 버전) 단위로 지우고 다시 씁니다.
+    CONSTRAINT pk_news_keywords PRIMARY KEY (article_id, keyword, rule_version),
+    CONSTRAINT fk_news_keywords_article FOREIGN KEY (article_id)
+        REFERENCES news_articles (id),
+    -- 등록한 규칙 버전으로만 키워드를 씁니다.
+    CONSTRAINT fk_news_keywords_rule_version FOREIGN KEY (rule_version)
+        REFERENCES keyword_rule_versions (rule_version)
+);
+
+-- 실행 기록은 구간 기준으로 고정합니다. 같은 구간을 다시 처리하면 같은 행을 갱신하고 건수·결과가 같습니다.
 CREATE TABLE pipeline_runs (
     -- uuid5(DAG id + 구간 끝): 같은 구간을 다시 실행하면 같은 값이라 같은 행을 갱신합니다.
     run_id VARCHAR2(36) NOT NULL,
     interval_end TIMESTAMP NOT NULL,
+    -- 처음 적재한 실행의 종류. 다시 실행(백필 등)해도 바꾸지 않습니다.
     run_type VARCHAR2(20) NOT NULL,
     outcome VARCHAR2(30) NOT NULL,
     feed_count NUMBER NOT NULL,
     failed_feed_count NUMBER NOT NULL,
-    -- 기사 건수는 서로 다른 기사 기준 (한 실행의 두 피드에 나온 기사는 한 번만 셉니다)
+    -- new_articles·existing_articles는 서로 다른 기사 수입니다 (한 실행의 두 피드에 나온 기사는 한 번만 셉니다).
+    -- new_articles는 저장된 first_seen_run_end가 이 구간 끝인 기사, existing_articles는 나머지입니다.
     new_articles NUMBER NOT NULL,
     existing_articles NUMBER NOT NULL,
+    -- excluded_notice·excluded_blocklist는 항목 수를 피드마다 더한 값입니다 (같은 기사가 두 피드에 나오면 두 번 셉니다).
     excluded_notice NUMBER NOT NULL,
     excluded_blocklist NUMBER NOT NULL,
     parse_failed NUMBER NOT NULL,
     keyword_rows NUMBER NOT NULL,
+    -- 가장 최근 처리의 시작·완료 시각. 다시 처리할 때마다 갱신합니다.
     started_at TIMESTAMP NOT NULL,
     completed_at TIMESTAMP NOT NULL,
 
@@ -98,6 +106,8 @@ CREATE TABLE pipeline_feed_runs (
     etag VARCHAR2(1000),
     last_modified VARCHAR2(1000),
     raw_key VARCHAR2(400),
+    -- 원본 봉투의 요청 시각(UTC). 원본이 없거나 봉투를 읽지 못하면 NULL
+    fetched_at TIMESTAMP,
     -- 파싱된 항목 수. 파싱 실패(parse_failed)는 파싱 단계에서 이미 빠져 여기에 들어가지 않습니다.
     item_count NUMBER NOT NULL,
     new_articles NUMBER NOT NULL,
@@ -118,7 +128,8 @@ CREATE TABLE pipeline_feed_runs (
         AND excluded_notice >= 0 AND excluded_blocklist >= 0 AND parse_failed >= 0
         AND missing_required >= 0 AND duplicate_keys >= 0
     ),
-    -- 항목마다 한 칸에만 셉니다. 같은 실행의 앞 피드가 가져간 기사는 existing_articles에 들어갑니다.
+    -- 항목마다 한 칸에만 셉니다. new_articles는 이 구간에서 처음 본 기사가 이번 실행에서 처음 나온 항목이고,
+    -- 같은 실행의 앞 피드가 가져간 기사와 다른 구간에서 처음 본 기사는 existing_articles에 들어갑니다.
     CONSTRAINT ck_pipeline_feed_runs_reconcile CHECK (
         item_count = new_articles + existing_articles + excluded_notice + excluded_blocklist
     )

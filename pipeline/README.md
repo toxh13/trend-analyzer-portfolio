@@ -45,8 +45,12 @@ python -m trend_pipeline run --interval-end 2026-11-04T03:00:00Z --run-type back
 표준 출력에는 요약 한 줄만 나옵니다. 피드별 실패는 표준 오류에 한 줄씩 나옵니다.
 
 ```text
-run_id=<uuid> outcome=SUCCESS new=1087 existing=0 keywords=8093
+run_id=<uuid> outcome=SUCCESS new=1087 existing=0 inserted=1087 keywords=8093
 ```
+
+- `new`: 이 구간에서 처음 본 기사 수(저장된 `first_seen_run_end`가 이 구간 끝인 기사), `existing`: 다른 구간에서 처음 본 기사 수. 실행 기록은 구간 기준으로 고정이라 같은 구간을 다시 처리해도 `new`·`existing`·`outcome`이 같습니다.
+- `inserted`: 이번 실행에서 실제로 새로 넣은 기사 행 수. 같은 구간을 다시 처리하면 0입니다.
+- `keywords`: 이번 실행에서 다시 쓴 키워드 행 수
 
 종료 코드: `outcome`이 `FAILURE`이거나 예외가 나면 1, `SUCCESS`·`EMPTY`·`PARTIAL_FAILURE`는 0, 인자 오류는 2입니다.
 

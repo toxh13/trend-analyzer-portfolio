@@ -11,7 +11,7 @@ import oracledb
 
 from trend_pipeline.article_key import article_key, display_link
 from trend_pipeline.collect import CollectResult
-from trend_pipeline.envelope import from_bytes
+from trend_pipeline.envelope import Envelope, from_bytes
 from trend_pipeline.feeds import FeedSpec, load_feeds
 from trend_pipeline.keys import raw_key
 from trend_pipeline.keywords import load_rules
@@ -62,18 +62,18 @@ def _process_feed(
     if not store.exists(key):
         # 원본이 없으면 수집 단계가 남긴 실패 이유를 쓰고, 그것도 없으면 원본이 없다고만 적는다
         if collected is not None and collected.action == "failed":
-            return [], _failed(spec, collected.status, None, None, None, collected.error or "failed")
-        return [], _failed(spec, None, None, None, None, "raw_missing")
+            return [], _failed(spec, collected.error or "failed", status=collected.status)
+        return [], _failed(spec, "raw_missing")
 
     try:
         env = from_bytes(store.get(key))
     except (ValueError, TypeError, KeyError, AttributeError) as exc:
-        return [], _failed(spec, None, None, None, key, f"EnvelopeError: {exc}")
+        return [], _failed(spec, f"EnvelopeError: {exc}", key=key)
 
     try:
         parsed = parse_feed(env)
     except FeedParseError as exc:
-        return [], _failed(spec, env.status, env.etag, env.last_modified, key, f"FeedParseError: {exc}")
+        return [], _failed(spec, f"FeedParseError: {exc}", key=key, env=env)
 
     keyed = [(article_key(spec.source, item.link, item.guid), item) for item in parsed.items]
     items = [
@@ -96,6 +96,7 @@ def _process_feed(
         etag=env.etag,
         last_modified=env.last_modified,
         raw_key=key,
+        fetched_at=env.requested_at,  # 봉투를 읽었으면(200·304) 그 요청 시각
         item_count=len(items),
         parse_failed=parsed.parse_failed,
         missing_required=quality.missing_required,
@@ -106,14 +107,16 @@ def _process_feed(
 
 
 def _failed(
-    spec: FeedSpec, status: int | None, etag: str | None, last_modified: str | None, key: str | None, error: str
+    spec: FeedSpec, error: str, *, status: int | None = None, key: str | None = None, env: Envelope | None = None
 ) -> FeedOutcome:
+    """실패한 피드의 결과. 봉투를 읽었으면(파싱 실패) 상태·validator·요청 시각은 봉투 값을 쓴다."""
     return FeedOutcome(
         feed=spec,
-        status=status,
-        etag=etag,
-        last_modified=last_modified,
+        status=env.status if env is not None else status,
+        etag=env.etag if env is not None else None,
+        last_modified=env.last_modified if env is not None else None,
         raw_key=key,
+        fetched_at=env.requested_at if env is not None else None,
         item_count=0,
         parse_failed=0,
         missing_required=0,
