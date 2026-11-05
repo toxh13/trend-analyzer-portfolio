@@ -40,6 +40,23 @@ def test_hanja_abbreviations_expanded():
     assert not kws & {"美", "中", "企", "中企"}
 
 
+@pytest.mark.parametrize(
+    ("title", "expected", "unexpected"),
+    [
+        ("中東 정세 불안에 유가 급등", {"중동", "유가"}, {"중국", "東"}),
+        ("北美 시장 공략", {"북미", "시장"}, {"북한", "미국"}),
+        ("南北 정상회담", {"남북"}, {"북한", "南"}),
+        ("南美 순방", {"남미"}, {"미국", "南"}),
+    ],
+    ids=["middle-east", "north-america", "inter-korean", "south-america"],
+)
+def test_hanja_compounds_replaced_before_single_characters(title, expected, unexpected):
+    # 두 글자 약어(中東·北美·南北·南美)를 한 글자(中·北·美)보다 먼저 바꿔야 뜻이 맞는다
+    kws = extract_keywords(title, load_rules())
+    assert expected <= kws
+    assert not kws & unexpected
+
+
 def test_surname_hanja_dropped():
     assert "尹" not in extract_keywords("[속보]尹 선거법 2심", load_rules())
 
@@ -108,7 +125,8 @@ def test_packaged_rules_match_first_version_values():
     assert rules.min_length == 2
     assert rules.stopwords == frozenset()
     assert rules.hanja_map == (
-        ("中企", "중소기업"), ("美", "미국"), ("中", "중국"), ("日", "일본"), ("北", "북한"), ("韓", "한국"),
+        ("中企", "중소기업"), ("中東", "중동"), ("北美", "북미"), ("南美", "남미"), ("南北", "남북"),
+        ("美", "미국"), ("中", "중국"), ("日", "일본"), ("北", "북한"), ("韓", "한국"),
         ("英", "영국"), ("伊", "이탈리아"), ("與", "여당"), ("野", "야당"), ("靑", "청와대"),
     )  # fmt: skip
 
