@@ -25,7 +25,7 @@ from trend_pipeline.load import (
     writable_rule_sets,
 )
 
-from conftest import INTERVAL_END, V2_TABLES, feed_spec
+from conftest import INTERVAL_END, V2_TABLES, empty_v2_tables, feed_spec
 
 pytestmark = pytest.mark.integration
 
@@ -42,11 +42,11 @@ def counts(conn: oracledb.Connection) -> dict[str, int]:
     return {table: rows(conn, f"SELECT COUNT(*) FROM {table}")[0][0] for table in V2_TABLES}
 
 
-def silver_rows(conn: oracledb.Connection) -> tuple[list[tuple], list[tuple]]:
-    """기사·키워드 내용 전체. id 대신 기사 키로 맞춰 비교한다."""
+def silver_rows(conn: oracledb.Connection) -> tuple[list[tuple], list[tuple], list[tuple]]:
+    """기사·키워드·기사 카테고리 내용 전체. id 대신 기사 키로 맞춰 비교한다."""
     articles = rows(
         conn,
-        "SELECT source, source_article_id, category, title, summary, link, published_at, first_seen_run_end"
+        "SELECT source, source_article_id, title, summary, link, published_at, first_seen_run_end"
         " FROM news_articles ORDER BY source, source_article_id",
     )
     keywords = rows(
@@ -55,7 +55,21 @@ def silver_rows(conn: oracledb.Connection) -> tuple[list[tuple], list[tuple]]:
         " FROM news_keywords k JOIN news_articles a ON a.id = k.article_id"
         " ORDER BY 1, 2, 3, 4",
     )
-    return articles, keywords
+    return articles, keywords, article_categories(conn)
+
+
+def article_categories(conn: oracledb.Connection) -> list[tuple]:
+    """(source, source_article_id, category) 전체. 기사 하나가 여러 카테고리에 속할 수 있다."""
+    return rows(
+        conn,
+        "SELECT a.source, a.source_article_id, c.category"
+        " FROM news_article_categories c JOIN news_articles a ON a.id = c.article_id"
+        " ORDER BY 1, 2, 3",
+    )
+
+
+def categories_of(conn: oracledb.Connection, number: str) -> set[str]:
+    return {category for _, found, category in article_categories(conn) if found == number}
 
 
 def duplicate_rows(conn: oracledb.Connection) -> tuple[list[tuple], list[tuple]]:
@@ -69,6 +83,10 @@ def duplicate_rows(conn: oracledb.Connection) -> tuple[list[tuple], list[tuple]]
         "SELECT article_id, keyword, rule_version FROM news_keywords"
         " GROUP BY article_id, keyword, rule_version HAVING COUNT(*) > 1",
     )
+    assert rows(
+        conn,
+        "SELECT article_id, category FROM news_article_categories GROUP BY article_id, category HAVING COUNT(*) > 1",
+    ) == []
     return articles, keywords
 
 
@@ -295,6 +313,7 @@ def test_concurrent_runs_no_duplicates_no_errors(
         "pipeline_feed_runs": 2,
         "pipeline_runs": 1,
         "news_keywords": a.keyword_rows,
+        "news_article_categories": expected,  # 샘플은 모두 정치 피드라 기사마다 카테고리 하나
         "news_articles": expected,
         "article_blocklist": 0,
         "keyword_rule_versions": 1,
@@ -431,10 +450,10 @@ def test_blocklisted_article_never_loaded_even_on_rerun(conn, sample_run, rules)
     assert feed_rows(conn)[(target.feed.source, target.feed.feed)]["excluded_blocklist"] == blocked_items
 
 
-def test_same_article_in_two_feeds_keeps_first_feed_category(conn, rules):
+def test_same_article_in_two_feeds_belongs_to_both_categories(conn, rules):
     politics, economy = feed_spec("yna", "정치"), feed_spec("yna", "경제")
     shared = "AKR20261104000100001"
-    # 항목 목록 순서가 아니라 feeds(= feeds.yml) 순서가 기준이다: 경제 항목을 앞에 둬도 정치가 이긴다
+    # 기사 행(제목 등)은 feeds(= feeds.yml) 순서로 앞 피드 것을 쓴다: 경제 항목을 앞에 둬도 정치 항목의 제목이 저장된다
     items = [
         article(economy, shared, "경제면 제목 반도체 수출"),
         article(economy, "AKR20261104000200002", "환율 급등 증시 하락"),
@@ -453,23 +472,20 @@ def test_same_article_in_two_feeds_keeps_first_feed_category(conn, rules):
     assert (stats.new_articles, stats.existing_articles) == (3, 0)
     assert rows(
         conn,
-        "SELECT category, title, first_seen_run_end FROM news_articles WHERE source_article_id = :id",
+        "SELECT title, first_seen_run_end FROM news_articles WHERE source_article_id = :id",
         id=shared,
-    ) == [("정치", "정치면 제목 국회 예산안", datetime(2026, 11, 4, 3, 0))]
+    ) == [("정치면 제목 국회 예산안", datetime(2026, 11, 4, 3, 0))]
+    # 두 섹션에 실린 기사는 두 카테고리에 모두 속한다
+    assert categories_of(conn, shared) == {"정치", "경제"}
+    assert categories_of(conn, "AKR20261104000200002") == {"경제"}
+    # 피드 건수는 기사 기준이다: 같은 실행의 앞 피드가 가져간 기사는 뒤 피드에서 이미 있음
     by_feed = feed_rows(conn)
     assert (by_feed[("yna", "politics")]["new_articles"], by_feed[("yna", "politics")]["existing_articles"]) == (2, 0)
     assert (by_feed[("yna", "economy")]["new_articles"], by_feed[("yna", "economy")]["existing_articles"]) == (1, 1)
     (version,) = rules
-    shared_keywords = rows(
-        conn,
-        "SELECT k.keyword FROM news_keywords k JOIN news_articles a ON a.id = k.article_id"
-        " WHERE a.source_article_id = :id AND k.rule_version = :version",
-        id=shared,
-        version=version,
-    )
-    assert {keyword for (keyword,) in shared_keywords} == extract_keywords("정치면 제목 국회 예산안", rules[version])
+    assert keywords_of(conn, shared, version) == extract_keywords("정치면 제목 국회 예산안", rules[version])
 
-    # 다음 실행에서 경제 피드에만 나와도 저장된 카테고리와 처음 본 실행은 그대로다
+    # 다음 실행에서 경제 피드에만 나와도 카테고리는 지우지 않는다(RSS로는 섹션에서 빠졌는지 알 수 없다)
     later = RunLoadInput(
         interval_end=INTERVAL_END + timedelta(hours=1),
         run_type="scheduled",
@@ -479,9 +495,72 @@ def test_same_article_in_two_feeds_keeps_first_feed_category(conn, rules):
     later_stats = load_run(conn, later, rules)
 
     assert (later_stats.new_articles, later_stats.existing_articles) == (0, 1)
+    assert categories_of(conn, shared) == {"정치", "경제"}
     assert rows(
-        conn, "SELECT category, first_seen_run_end FROM news_articles WHERE source_article_id = :id", id=shared
-    ) == [("정치", datetime(2026, 11, 4, 3, 0))]
+        conn, "SELECT first_seen_run_end FROM news_articles WHERE source_article_id = :id", id=shared
+    ) == [(datetime(2026, 11, 4, 3, 0),)]
+
+
+def test_category_seen_in_a_later_interval_is_added(conn, rules):
+    politics, economy = feed_spec("yna", "정치"), feed_spec("yna", "경제")
+    number = "AKR20261104000400004"
+    first = RunLoadInput(
+        interval_end=INTERVAL_END,
+        run_type="scheduled",
+        items=[article(politics, number, "예산안 처리 합의")],
+        feeds=[outcome_for(politics, 1)],
+    )
+    load_run(conn, first, rules)
+    assert categories_of(conn, number) == {"정치"}
+
+    second = RunLoadInput(
+        interval_end=INTERVAL_END + timedelta(hours=1),
+        run_type="scheduled",
+        items=[article(economy, number, "예산안 처리 합의")],
+        feeds=[outcome_for(economy, 1)],
+    )
+    stats = load_run(conn, second, rules)
+
+    assert (stats.new_articles, stats.existing_articles, stats.inserted_articles) == (0, 1, 0)
+    assert categories_of(conn, number) == {"정치", "경제"}
+
+
+def test_categories_do_not_depend_on_processing_order(conn, rule_set):
+    # "처음 본 섹션" 방식이면 백필 순서에 따라 카테고리가 달라진다. 카테고리를 지금까지 본 섹션의 합집합으로 두면
+    # 합집합은 순서와 상관없으므로 N → N+1과 N+1 → N(예: N 실패 뒤 백필) 처리 결과가 같다
+    politics, economy = feed_spec("yna", "정치"), feed_spec("yna", "경제")
+    shared, other = "AKR20261104000500005", "AKR20261104000600006"
+    title = "반도체 수출 규제 논의"
+    run_n = RunLoadInput(
+        interval_end=INTERVAL_END,
+        run_type="scheduled",
+        items=[article(politics, shared, title), article(politics, other, "여야 대표 회동")],
+        feeds=[outcome_for(politics, 2)],
+    )
+    run_next = RunLoadInput(
+        interval_end=INTERVAL_END + timedelta(hours=1),
+        run_type="scheduled",
+        items=[article(economy, shared, title)],
+        feeds=[outcome_for(economy, 1)],
+    )
+
+    def load_in(order: list[RunLoadInput]) -> list[tuple]:
+        empty_v2_tables(conn)
+        ensure_rule_version(conn, rule_set)
+        rules = writable_rule_sets(conn)
+        for run in order:
+            load_run(conn, run, rules)
+        return article_categories(conn)
+
+    forward = load_in([run_n, run_next])
+    backward = load_in([run_next, run_n])
+
+    assert forward == backward
+    assert {(number, category) for _, number, category in forward} == {
+        (shared, "정치"),
+        (shared, "경제"),
+        (other, "정치"),
+    }
 
 
 def keywords_of(conn: oracledb.Connection, number: str, version: str) -> set[str]:

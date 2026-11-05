@@ -2,6 +2,8 @@
 
 같은 실행을 두 번, 동시에, 또는 중간 실패 뒤 다시 돌려도 남는 행이 같다(멱등).
 - 기사: 키 (source, source_article_id)로 MERGE … WHEN NOT MATCHED THEN INSERT. 이미 있는 기사는 건드리지 않는다
+- 카테고리: 이번 실행에서 기사가 나온 피드의 카테고리를 (기사, 카테고리)로 없으면 넣기만 한다(지우지 않음).
+  남는 행은 지금까지 본 섹션의 합집합이라 구간을 어떤 순서로 처리·재처리해도 같다
 - 키워드: (기사, 규칙 버전)마다 지우고 다시 쓴다. 항상 저장된(처음 본) 제목에서 뽑으므로
   구간을 어떤 순서로 처리·재처리해도 같은 기사의 키워드는 같다
 - 실행 기록: 결정적 run_id로 MERGE. 다시 실행하면 같은 행을 갱신한다. 건수는 구간 기준으로 고정이다:
@@ -61,7 +63,9 @@ class RunLoadInput:
     interval_end: datetime
     run_type: str
     items: list[LoadItem]
-    feeds: list[FeedOutcome]  # feeds.yml 순서. 같은 기사가 여러 피드에 나오면 앞 피드가 이긴다
+    # feeds.yml 순서. 같은 기사가 여러 피드에 나오면 기사 행(제목 등)은 앞 피드 항목으로 넣고,
+    # 카테고리는 나온 피드 모두의 것을 넣는다
+    feeds: list[FeedOutcome]
 
 
 @dataclass(frozen=True)
@@ -309,6 +313,15 @@ def _load_once(
 
     inserted = _merge_articles(cursor, [plan.winners[key] for key in loadable], plan.interval_end)
     stored = _stored_articles(cursor, loadable)
+    # 공지 아닌 항목마다 (기사, 그 피드의 카테고리). 정렬해 넣어 동시 실행끼리 잠금 순서를 맞춘다
+    category_rows = sorted(
+        {
+            (stored[item.key].id, item.feed.category)
+            for item in plan.ordered
+            if item.key in stored and not item.title_excluded
+        }
+    )
+    _merge_categories(cursor, category_rows)
     # 실행 기록은 구간 기준: 이번 시도에서 넣었는지가 아니라 저장된 처음 본 구간이 이 구간인지로 센다.
     # 그래서 같은 구간을 다시 처리해도, 동시 실행이 먼저 넣었어도 건수가 같다
     belongs = {key for key in loadable if stored[key].first_seen_run_end == plan.interval_end}
@@ -384,9 +397,9 @@ MERGE INTO news_articles t
 USING (SELECT :source AS source, :source_article_id AS source_article_id FROM dual) s
 ON (t.source = s.source AND t.source_article_id = s.source_article_id)
 WHEN NOT MATCHED THEN INSERT
-    (source, source_article_id, category, title, summary, link, published_at, first_seen_run_end)
+    (source, source_article_id, title, summary, link, published_at, first_seen_run_end)
 VALUES
-    (s.source, s.source_article_id, :category, :title, :summary, :link, :published_at, :first_seen_run_end)
+    (s.source, s.source_article_id, :title, :summary, :link, :published_at, :first_seen_run_end)
 """
 
 
@@ -398,7 +411,6 @@ def _merge_articles(cursor: oracledb.Cursor, items: list[LoadItem], interval_end
         {
             "source": item.key.source,
             "source_article_id": item.key.source_article_id,
-            "category": item.feed.category,
             "title": _stored_title(item.title),
             "summary": item.summary,
             "link": item.link,
@@ -435,6 +447,20 @@ def _stored_articles(cursor: oracledb.Cursor, keys: list[ArticleKey]) -> dict[Ar
     if missing:
         raise RuntimeError(f"MERGE 뒤에도 기사를 찾지 못했다: {missing[:3]}")
     return stored
+
+
+_MERGE_CATEGORY = """
+MERGE INTO news_article_categories t
+USING (SELECT :1 AS article_id, :2 AS category FROM dual) s
+ON (t.article_id = s.article_id AND t.category = s.category)
+WHEN NOT MATCHED THEN INSERT (article_id, category) VALUES (s.article_id, s.category)
+"""
+
+
+def _merge_categories(cursor: oracledb.Cursor, category_rows: list[tuple[int, str]]) -> None:
+    """(article_id, category)를 없으면 넣는다. 이미 있는 행과 이번에 안 나온 카테고리는 그대로 둔다."""
+    if category_rows:
+        cursor.executemany(_MERGE_CATEGORY, category_rows)
 
 
 def _delete_keywords(cursor: oracledb.Cursor, pairs: list[tuple[int, str]]) -> None:

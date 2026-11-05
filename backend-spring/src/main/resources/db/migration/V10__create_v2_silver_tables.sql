@@ -1,6 +1,6 @@
 -- ============================================================
 -- v2 파이프라인 실버·운영 테이블
--- 기사(news_articles), 기사 키워드(news_keywords), 키워드 규칙 버전,
+-- 기사(news_articles), 기사 카테고리(news_article_categories), 기사 키워드(news_keywords), 키워드 규칙 버전,
 -- 실행 기록(pipeline_runs, pipeline_feed_runs), 삭제 요청 차단 목록을 만듭니다.
 -- v1 테이블(articles, article_keywords, crawl_batch_runs 등)은 그대로 두며 계획 3에서 삭제합니다.
 -- 모든 TIMESTAMP 열은 UTC 값을 저장합니다.
@@ -14,7 +14,6 @@ CREATE TABLE news_articles (
     source VARCHAR2(10) NOT NULL,
     -- 매체 기사 번호. 번호를 못 뽑으면 정규화한 링크 URL이 들어가므로 링크만큼 길게 둡니다.
     source_article_id VARCHAR2(1000 CHAR) NOT NULL,
-    category VARCHAR2(20 CHAR) NOT NULL,
     title VARCHAR2(1000 CHAR) NOT NULL,
     -- 요약이 없으면 NULL (Oracle은 빈 문자열을 NULL로 저장합니다)
     summary CLOB,
@@ -25,8 +24,21 @@ CREATE TABLE news_articles (
 
     CONSTRAINT pk_news_articles PRIMARY KEY (id),
     CONSTRAINT uk_news_articles_source_article UNIQUE (source, source_article_id),
-    CONSTRAINT ck_news_articles_source CHECK (source IN ('yna', 'khan', 'donga')),
-    CONSTRAINT ck_news_articles_category CHECK (
+    CONSTRAINT ck_news_articles_source CHECK (source IN ('yna', 'khan', 'donga'))
+);
+
+-- 기사가 실린 섹션의 카테고리. 두 섹션에 실린 기사는 두 카테고리에 모두 속합니다(기사-카테고리 다대다).
+-- 파이프라인은 본 섹션을 없으면 넣기만 하고 지우지 않습니다. 남는 행 = 지금까지 본 섹션의 합집합이라
+-- 구간을 어떤 순서로 처리·재처리해도 같습니다(처음 본 섹션 하나만 두면 백필 순서에 따라 달라집니다).
+-- 카테고리 구분 없는 집계는 기사를 한 번만 세야 합니다(이 표와 조인하면 두 섹션 기사가 두 번 나옵니다).
+CREATE TABLE news_article_categories (
+    article_id NUMBER NOT NULL,
+    category VARCHAR2(20 CHAR) NOT NULL,
+
+    CONSTRAINT pk_news_article_categories PRIMARY KEY (article_id, category),
+    CONSTRAINT fk_news_article_categories_article FOREIGN KEY (article_id)
+        REFERENCES news_articles (id),
+    CONSTRAINT ck_news_article_categories_category CHECK (
         category IN ('정치', '경제', '사회', '세계', '문화', 'IT/과학')
     )
 );

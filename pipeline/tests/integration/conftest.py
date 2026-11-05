@@ -40,6 +40,7 @@ V2_TABLES = (
     "pipeline_feed_runs",
     "pipeline_runs",
     "news_keywords",
+    "news_article_categories",
     "news_articles",
     "article_blocklist",
     "keyword_rule_versions",
