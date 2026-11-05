@@ -161,14 +161,14 @@ def test_passes_timeout_on_every_attempt():
 # --- 성공 응답 ---
 
 
-def test_200_returns_decoded_body_and_server_cased_headers():
+def test_200_returns_received_body_and_server_cased_headers():
     headers = {"ETag": '"v1"', "content-type": "application/rss+xml; charset=utf-8"}
     session = FakeSession(make_response(200, headers, BODY.encode("utf-8")))
     result, waits = run(session)
 
     assert isinstance(result, FetchResult)
     assert result.status == 200
-    assert result.body == BODY
+    assert result.body == BODY.encode("utf-8")
     assert result.headers == headers
     assert list(result.headers) == ["ETag", "content-type"]
     assert result.attempts == 1
@@ -180,7 +180,7 @@ def test_result_feeds_build_envelope():
     result, _ = run(session)
     env = build_envelope(SPEC, result.requested_at, result.status, result.headers, result.body)
     assert env.etag == '"v1"'
-    assert env.body == BODY
+    assert env.body == BODY.encode("utf-8")
 
 
 def test_default_clock_is_timezone_aware_utc():
@@ -189,53 +189,15 @@ def test_default_clock_is_timezone_aware_utc():
     assert result.requested_at.utcoffset() == timedelta(0)
 
 
-# --- 본문 디코딩 ---
+# --- 본문 ---
 
 
-def test_decodes_declared_charset_euc_kr():
-    text = "<title>한국어 뉴스 속보</title>"
-    headers = {"Content-Type": "text/xml; charset=EUC-KR"}
-    session = FakeSession(make_response(200, headers, text.encode("euc-kr")))
+def test_body_is_received_bytes_not_decoded():
+    # 디코드는 처리 단계가 봉투에서 한다(envelope.body_text). 요청 단계는 받은 바이트를 그대로 넘긴다
+    raw = "<title>한국어 뉴스 속보</title>".encode("euc-kr") + b"\xff"
+    session = FakeSession(make_response(200, {"Content-Type": "text/xml; charset=EUC-KR"}, raw))
     result, _ = run(session)
-    assert result.body == text
-
-
-def test_charset_parameter_may_be_quoted_and_header_name_any_case():
-    text = "<title>한국어 뉴스 속보</title>"
-    headers = {"content-type": 'text/xml; charset="euc-kr"'}
-    session = FakeSession(make_response(200, headers, text.encode("euc-kr")))
-    result, _ = run(session)
-    assert result.body == text
-
-
-def test_missing_charset_decodes_as_utf8_not_latin1():
-    # requests의 response.text는 text/xml에 charset이 없으면 ISO-8859-1로 읽어 한글이 깨진다
-    text = "<title>한국어 뉴스 속보</title>"
-    session = FakeSession(make_response(200, {"Content-Type": "text/xml"}, text.encode("utf-8")))
-    result, _ = run(session)
-    assert result.body == text
-
-
-def test_missing_content_type_decodes_as_utf8():
-    text = "<title>한국어 뉴스 속보</title>"
-    session = FakeSession(make_response(200, {}, text.encode("utf-8")))
-    result, _ = run(session)
-    assert result.body == text
-
-
-# 모르는 이름(LookupError), 텍스트 코덱이 아닌 이름(LookupError), 디코드하면 UnicodeError를 내는 코덱(undefined)
-@pytest.mark.parametrize("charset", ["no-such-codec", "rot13", "undefined"])
-def test_unknown_or_non_text_charset_falls_back_to_utf8(charset):
-    text = "<title>한국어 뉴스 속보</title>"
-    session = FakeSession(make_response(200, {"Content-Type": f"text/xml; charset={charset}"}, text.encode("utf-8")))
-    result, _ = run(session)
-    assert result.body == text
-
-
-def test_undecodable_bytes_are_replaced_not_raised():
-    session = FakeSession(make_response(200, {"Content-Type": "text/xml; charset=utf-8"}, b"<t>\xff\xfe</t>"))
-    result, _ = run(session)
-    assert result.body == "<t>��</t>"
+    assert result.body == raw
 
 
 # --- 재시도 ---

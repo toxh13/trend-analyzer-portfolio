@@ -90,7 +90,7 @@ def test_scheduled_runs_collect_then_send_stored_etag(
             return FetchResult(status=304, headers={"ETag": tag}, body=None, requested_at=now, attempts=1)
         headers = {"ETag": tag, "Content-Type": "application/rss+xml; charset=utf-8"}
         body = xml_by_feed[(spec.source, spec.feed)]
-        return FetchResult(status=200, headers=headers, body=body, requested_at=now, attempts=1)
+        return FetchResult(status=200, headers=headers, body=body.encode("utf-8"), requested_at=now, attempts=1)
 
     monkeypatch.setattr("trend_pipeline.__main__.fetch_feed", fake_fetch)
     # 정기 실행은 수집 범위(지금 − 1시간 ~ 지금 + 5분) 안의 구간만 받으므로, 실행마다 지금 시각을 구간 끝 + 2분으로 고정한다

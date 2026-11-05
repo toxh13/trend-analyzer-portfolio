@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
-from trend_pipeline.envelope import Envelope
+from trend_pipeline.envelope import Envelope, body_text
 
 _NAMESPACES = {
     "dc": "http://purl.org/dc/elements/1.1/",
@@ -44,12 +44,13 @@ def parse_feed(env: Envelope) -> ParseResult:
     본문이 없으면(304) 빈 결과를 돌려준다. 읽을 수 없는 항목은 세어서 제외하고 피드는 계속 처리한다.
     문서 자체가 깨졌으면 FeedParseError를 던진다.
     """
-    if env.body is None:
+    text = body_text(env)
+    if text is None:
         return ParseResult([], 0)
 
     where = f"{env.source}/{env.feed}"
-    # 서버가 BOM을 보내면 Task 4가 본문에 그대로 남기므로 여기서 한 번만 떼어낸다
-    body = env.body.removeprefix("\ufeff")
+    # 서버가 BOM을 보내면 봉투가 받은 바이트 그대로 남기므로 디코드한 글자에서 한 번만 떼어낸다
+    body = text.removeprefix("\ufeff")
     try:
         root = ET.fromstring(body)
     except ET.ParseError as exc:

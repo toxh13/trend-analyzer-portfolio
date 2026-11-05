@@ -6,7 +6,6 @@ import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from email.message import Message
 
 import requests
 
@@ -35,7 +34,7 @@ class RetryPolicy:
 class FetchResult:
     status: int  # 200 또는 304
     headers: dict[str, str]  # 서버가 보낸 표기 그대로
-    body: str | None  # 304이면 None
+    body: bytes | None  # 받은 바이트 그대로(디코드는 처리 단계가 봉투에서 한다). 304이면 None
     requested_at: datetime  # 결과를 낸 마지막 시도를 시작한 시각(UTC, timezone 포함)
     attempts: int
 
@@ -60,24 +59,6 @@ def _header(headers: Mapping[str, str], name: str) -> str | None:
         if key.lower() == wanted:
             return value
     return None
-
-
-def _decode_body(content: bytes, headers: Mapping[str, str]) -> str:
-    # response.text는 charset 없는 text/xml을 ISO-8859-1로 읽어 한글이 깨진다.
-    # Content-Type에 선언된 charset만 믿고, 없거나 쓸 수 없는 이름이면 UTF-8로 읽는다
-    content_type = _header(headers, "Content-Type")
-    if content_type:
-        message = Message()
-        message["Content-Type"] = content_type
-        charset = message.get_content_charset()
-        if charset:
-            try:
-                return content.decode(charset, errors="replace")
-            except (LookupError, UnicodeError):
-                # 모르는 코덱·텍스트 코덱이 아님(LookupError), errors 인자와 상관없이 디코드를 거부하는 코덱
-                # (예: undefined → UnicodeError). 어느 쪽이든 수집을 실패시키지 않고 UTF-8로 읽는다
-                pass
-    return content.decode("utf-8", errors="replace")
 
 
 def _retry_after_seconds(headers: Mapping[str, str]) -> float | None:
@@ -136,7 +117,7 @@ def fetch_feed(
             status = response.status_code
             headers = dict(response.headers)
             if status in (200, 304):
-                body = None if status == 304 else _decode_body(response.content, headers)
+                body = None if status == 304 else response.content
                 return FetchResult(
                     status=status, headers=headers, body=body, requested_at=requested_at, attempts=attempt
                 )

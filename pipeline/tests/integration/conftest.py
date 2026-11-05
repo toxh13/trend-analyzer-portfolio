@@ -168,7 +168,7 @@ def feed_spec(source: str, category: str) -> FeedSpec:
 
 def load_items(spec: FeedSpec, xml: str, interval_end: datetime = INTERVAL_END) -> tuple[list[LoadItem], FeedOutcome]:
     """피드 본문 하나를 처리 작업(Task 12)과 같은 방식으로 LoadItem 목록과 FeedOutcome으로 바꾼다."""
-    env = build_envelope(spec, interval_end, 200, {"ETag": '"fixture-etag"'}, xml)
+    env = build_envelope(spec, interval_end, 200, {"ETag": '"fixture-etag"'}, xml.encode("utf-8"))
     parsed = parse_feed(env)
     keyed = [(article_key(spec.source, item.link, item.guid), item) for item in parsed.items]
     items = [
@@ -245,6 +245,6 @@ def seeded_store(store: LocalRawStore) -> LocalRawStore:
     xml_by_feed = fixture_feed_xml()
     for spec in load_feeds():
         xml = xml_by_feed[(spec.source, spec.feed)]
-        env = build_envelope(spec, INTERVAL_END, 200, {"ETag": '"fixture-etag"'}, xml)
+        env = build_envelope(spec, INTERVAL_END, 200, {"ETag": '"fixture-etag"'}, xml.encode("utf-8"))
         assert store.put_if_absent(raw_key(INTERVAL_END, spec.source, spec.feed), to_bytes(env))
     return store

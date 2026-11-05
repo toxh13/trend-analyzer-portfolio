@@ -120,7 +120,7 @@ def test_display_link_non_http_guid_falls_back_to_link():
 def test_real_fixture_items_get_publisher_ids(path):
     source, _, rest = path.name.partition("_")
     spec = FeedSpec(source=source, feed=rest.removesuffix(".xml"), category="정치", url="https://example.com/x.xml")
-    result = parse_feed(build_envelope(spec, AT, 200, {}, path.read_text(encoding="utf-8")))
+    result = parse_feed(build_envelope(spec, AT, 200, {}, path.read_bytes()))
     assert result.items
     for item in result.items:
         key = article_key(source, item.link, item.guid)

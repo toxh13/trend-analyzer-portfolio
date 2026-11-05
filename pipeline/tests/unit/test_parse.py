@@ -22,7 +22,7 @@ RSS_CLOSE = "</channel></rss>"
 
 
 def env_for(body: str, spec: FeedSpec = SPEC) -> Envelope:
-    return build_envelope(spec, AT, 200, {}, body)
+    return build_envelope(spec, AT, 200, {}, body.encode("utf-8"))
 
 
 def fixture_env(name: str) -> Envelope:

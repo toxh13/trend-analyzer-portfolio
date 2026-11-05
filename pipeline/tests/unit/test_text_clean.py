@@ -217,7 +217,7 @@ def _fixture_items(prefix: str):
     for path in sorted(FIXTURES.glob(f"{prefix}_*.xml")):
         source, _, rest = path.name.partition("_")
         spec = FeedSpec(source=source, feed=rest.removesuffix(".xml"), category="정치", url="https://example.com/x.xml")
-        yield from parse_feed(build_envelope(spec, AT, 200, {}, path.read_text(encoding="utf-8"))).items
+        yield from parse_feed(build_envelope(spec, AT, 200, {}, path.read_bytes())).items
 
 
 def test_real_yna_summaries_lose_dateline_and_byline():

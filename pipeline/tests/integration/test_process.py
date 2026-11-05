@@ -1,5 +1,7 @@
 """처리 작업(process_interval) 통합 테스트: 원본 저장소 → 실버 테이블, 피드별 결과 기록, 재처리 멱등."""
 
+import base64
+import json
 from dataclasses import replace
 from datetime import timedelta
 
@@ -90,7 +92,8 @@ def test_fetched_at_comes_from_envelope_requested_at(conn, seeded_store):
     }
     for (source, feed), (status, body, at) in requested.items():
         seeded_store.delete_prefix(key_of(source, feed))
-        env = build_envelope(spec_of(source, feed), at, status, {"ETag": '"x"'}, body)
+        raw = None if body is None else body.encode("utf-8")
+        env = build_envelope(spec_of(source, feed), at, status, {"ETag": '"x"'}, raw)
         assert seeded_store.put_if_absent(key_of(source, feed), to_bytes(env))
     seeded_store.delete_prefix(key_of("khan", "kh_world"))
 
@@ -132,7 +135,7 @@ def test_missing_raw_feed_is_recorded_as_raw_missing(conn, seeded_store):
 def test_broken_xml_feed_errors_while_others_still_load(conn, seeded_store):
     key = key_of("yna", "economy")
     seeded_store.delete_prefix(key)
-    broken = build_envelope(spec_of("yna", "economy"), INTERVAL_END, 200, {"ETag": '"x"'}, "<rss><channel><item>")
+    broken = build_envelope(spec_of("yna", "economy"), INTERVAL_END, 200, {"ETag": '"x"'}, b"<rss><channel><item>")
     assert seeded_store.put_if_absent(key, to_bytes(broken))
 
     stats = process_interval(INTERVAL_END, "backfill", seeded_store, conn, [])
@@ -155,6 +158,21 @@ def test_unreadable_envelope_is_recorded_as_envelope_error(conn, seeded_store):
     assert stats.outcome == "PARTIAL_FAILURE"
     _, item_count, error, _ = feed_run(conn, "donga", "science")
     assert item_count == 0 and error.startswith("EnvelopeError: ")
+
+
+def test_tampered_raw_body_is_recorded_as_envelope_error(conn, seeded_store):
+    # 원본 본문이 적힌 sha256과 다르면(손상·변조) 그 피드는 읽지 않고 실패로 남긴다. 다른 피드는 계속 적재한다
+    key = key_of("donga", "science")
+    payload = json.loads(seeded_store.get(key))
+    payload["body_base64"] = base64.b64encode(b"<rss><channel></channel></rss>").decode("ascii")
+    seeded_store.delete_prefix(key)
+    assert seeded_store.put_if_absent(key, json.dumps(payload).encode("utf-8"))
+
+    stats = process_interval(INTERVAL_END, "backfill", seeded_store, conn, [])
+
+    assert stats.outcome == "PARTIAL_FAILURE" and stats.new_articles > 0
+    _, item_count, error, _ = feed_run(conn, "donga", "science")
+    assert item_count == 0 and error.startswith("EnvelopeError: ") and "sha256" in error
 
 
 def test_failed_collect_result_without_raw_records_its_error(conn, seeded_store):

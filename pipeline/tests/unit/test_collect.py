@@ -34,8 +34,9 @@ class FakeFetch:
         return self.result
 
 
-def ok(body, headers=None):
-    return FetchResult(status=200, headers=headers or {}, body=body, requested_at=REQUESTED_AT, attempts=1)
+def ok(body: str, headers=None):
+    body_bytes = body.encode("utf-8")
+    return FetchResult(status=200, headers=headers or {}, body=body_bytes, requested_at=REQUESTED_AT, attempts=1)
 
 
 def collect(store, fetch, run_type="scheduled", validators=NO_VALIDATORS, spec=SPEC, now=REQUESTED_AT):
@@ -127,7 +128,7 @@ def test_broken_xml_is_still_saved_and_reported(store):
     assert result.status == 200
     assert result.quality is None
     assert result.error is not None and result.error.startswith("FeedParseError: ")
-    assert from_bytes(store.get(KEY)).body == "<rss><channel><item>"
+    assert from_bytes(store.get(KEY)).body == b"<rss><channel><item>"
 
 
 def test_unexpected_error_in_record_only_steps_still_saves_raw(store, monkeypatch):
@@ -139,7 +140,7 @@ def test_unexpected_error_in_record_only_steps_still_saves_raw(store, monkeypatc
     body = (FIXTURES / "yna_politics.xml").read_text(encoding="utf-8")
     result = collect(store, FakeFetch(result=ok(body)))
     assert result == CollectResult(SPEC, KEY, "fetched", 200, None, "RuntimeError: 품질 검사 고장")
-    assert from_bytes(store.get(KEY)).body == body
+    assert from_bytes(store.get(KEY)).body == body.encode("utf-8")
 
 
 def test_200_bytes_round_trip_to_fetched_body(store):
@@ -147,7 +148,7 @@ def test_200_bytes_round_trip_to_fetched_body(store):
     fetch = FakeFetch(result=ok(body, {"ETag": '"v1"'}))
     result = collect(store, fetch)
     env = from_bytes(store.get(KEY))
-    assert env.body == body
+    assert env.body == body.encode("utf-8")
     assert env.status == 200
     assert env.etag == '"v1"'
     assert env.requested_at == REQUESTED_AT
