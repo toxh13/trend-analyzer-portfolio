@@ -1,7 +1,9 @@
 import threading
+from pathlib import Path
 
 import pytest
 
+from trend_pipeline import raw_store as raw_store_module
 from trend_pipeline.raw_store import LocalRawStore, RawIntegrityError
 
 KEY = "raw/dt=2026-11-04/source=yna/feed=politics/run=20261104T030000Z.json"
@@ -149,6 +151,33 @@ def test_delete_prefix_rejects_empty_prefix(tmp_path):
     with pytest.raises(ValueError):
         s.delete_prefix("")
     assert s.exists(KEY)
+
+
+def test_list_keys_walks_only_the_prefix_folder(tmp_path, monkeypatch):
+    # 원본이 쌓여도 다른 날짜 폴더는 읽지 않도록, 접두어의 마지막 '/' 앞 폴더부터 돈다
+    s = LocalRawStore(tmp_path)
+    s.put_if_absent("raw/dt=2026-11-04/source=yna/feed=politics/run=20261104T030000Z.json", b"x")
+    s.put_if_absent("raw/dt=2026-11-05/source=yna/feed=politics/run=20261105T030000Z.json", b"x")
+    starts = []
+    real_walk = raw_store_module.os.walk
+
+    def spy_walk(top, *args, **kwargs):
+        starts.append(Path(top))
+        return real_walk(top, *args, **kwargs)
+
+    monkeypatch.setattr(raw_store_module.os, "walk", spy_walk)
+    assert len(s.list_keys("raw/dt=2026-11-04/")) == 1
+    assert len(s.list_keys("raw/dt=2026-1")) == 2
+    assert starts == [tmp_path / "raw" / "dt=2026-11-04", tmp_path / "raw"]
+
+
+@pytest.mark.parametrize("prefix", ["../", "/raw/", ".tmp/", "raw/../raw/", "raw//", "C:/", "raw\\dt"])
+def test_list_keys_with_prefix_no_key_can_have_is_empty(tmp_path, prefix):
+    # 올바른 키가 가질 수 없는 접두어는 루트 밖이나 임시 폴더를 돌지 않고 빈 목록이다
+    s = LocalRawStore(tmp_path)
+    s.put_if_absent(KEY, b"x")
+    (tmp_path / ".tmp" / "stray.part").write_bytes(b"leftover")
+    assert s.list_keys(prefix) == []
 
 
 def test_list_keys_on_missing_root_is_empty(tmp_path):

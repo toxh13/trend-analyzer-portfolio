@@ -103,8 +103,12 @@ class LocalRawStore:
         return True
 
     def list_keys(self, prefix: str) -> list[str]:
+        # 접두어의 마지막 '/' 앞은 폴더 경로다. 그 폴더부터만 돌아 원본이 쌓여도 다른 날짜 폴더는 읽지 않는다
+        folders = prefix.split("/")[:-1]
+        if any(part in ("", ".", "..") or ":" in part or "\\" in part for part in folders) or folders[:1] == [_TMP_DIR]:
+            return []  # 올바른 키(_validate_key)가 가질 수 없는 폴더라 맞는 키가 없다. 루트 밖·임시 폴더도 돌지 않는다
         keys: list[str] = []
-        for dirpath, dirnames, filenames in os.walk(self._root):
+        for dirpath, dirnames, filenames in os.walk(self._root.joinpath(*folders)):
             directory = Path(dirpath)
             if directory == self._root and _TMP_DIR in dirnames:
                 dirnames.remove(_TMP_DIR)  # 임시 디렉터리는 내려가지 않는다
