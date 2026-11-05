@@ -93,11 +93,11 @@ docs/superpowers/plans/2026-11-04-p1-pipeline-core.md
 **Interfaces:**
 - Produces: `pip install -e "pipeline[test]"`로 설치되는 `trend_pipeline` 패키지, pytest 마커 `integration`
 
-- [ ] **Step 1:** 사용자 확인 후 `main`에 태그 `v1-final` 생성, 브랜치 `v2/p1-pipeline-core` 생성
-- [ ] **Step 2:** `pyproject.toml` 작성 — `requires-python = ">=3.11,<3.12"`, 의존성 `requests==2.34.2` `kiwipiepy==0.24.1` `oracledb==26.1.0` `PyYAML` `duckdb`, extra `test` = `pytest` `testcontainers[oracle]`. 버전이 안 적힌 것은 작업 시점 최신 안정판으로 고정(`==`)
-- [ ] **Step 3:** `test_smoke.py`: `import trend_pipeline` 성공 테스트 작성 → `pytest pipeline/tests/unit -q` 통과 확인
-- [ ] **Step 4:** CI `pipeline-tests.yml`: push·PR에서 `pipeline/**` 변경 시 Python 3.11로 `pytest pipeline/tests/unit -q` 실행
-- [ ] **Step 5:** 커밋 `chore: scaffold v2 pipeline package and docs`
+- [x] **Step 1:** 사용자 확인 후 `main`에 태그 `v1-final` 생성, 브랜치 `v2/p1-pipeline-core` 생성
+- [x] **Step 2:** `pyproject.toml` 작성 — `requires-python = ">=3.11,<3.12"`, 의존성 `requests==2.34.2` `kiwipiepy==0.24.1` `oracledb==26.1.0` `PyYAML` `duckdb`, extra `test` = `pytest` `testcontainers[oracle]`. 버전이 안 적힌 것은 작업 시점 최신 안정판으로 고정(`==`)
+- [x] **Step 3:** `test_smoke.py`: `import trend_pipeline` 성공 테스트 작성 → `pytest pipeline/tests/unit -q` 통과 확인
+- [x] **Step 4:** CI `pipeline-tests.yml`: push·PR에서 `pipeline/**` 변경 시 Python 3.11로 `pytest pipeline/tests/unit -q` 실행
+- [x] **Step 5:** 커밋 `chore: scaffold v2 pipeline package and docs`
 
 ---
 
@@ -123,7 +123,7 @@ donga: politics 정치 · economy 경제 · national 사회 · international 세
        URL = https://rss.donga.com/{feed}.xml
 ```
 
-- [ ] **Step 1: 실패하는 테스트**
+- [x] **Step 1: 실패하는 테스트**
 ```python
 def test_loads_17_feeds_in_file_order():
     feeds = load_feeds()
@@ -139,10 +139,10 @@ def test_one_feed_per_source_and_category():
 def test_rejects_duplicate_source_category(tmp_path):
     # 같은 (source, category) 두 줄 → ValueError
 ```
-- [ ] **Step 2:** `pytest pipeline/tests/unit/test_feeds.py -q` → 실패 확인
-- [ ] **Step 3:** `load_feeds` 구현 (YAML 읽기 → 검증: source ∈ {yna, khan, donga}, category ∈ 6개, (source, category) 중복 금지)
-- [ ] **Step 4:** 테스트 통과 확인
-- [ ] **Step 5:** 커밋 `feat: add feed configuration for 17 RSS feeds`
+- [x] **Step 2:** `pytest pipeline/tests/unit/test_feeds.py -q` → 실패 확인
+- [x] **Step 3:** `load_feeds` 구현 (YAML 읽기 → 검증: source ∈ {yna, khan, donga}, category ∈ 6개, (source, category) 중복 금지)
+- [x] **Step 4:** 테스트 통과 확인
+- [x] **Step 5:** 커밋 `feat: add feed configuration for 17 RSS feeds`
 
 ---
 
@@ -155,7 +155,7 @@ def test_rejects_duplicate_source_category(tmp_path):
 **Interfaces:**
 - Produces: `DAG_ID = "trend_pipeline_hourly"`, `run_id(interval_end: datetime, dag_id: str = DAG_ID) -> str`, `raw_key(interval_end: datetime, source: str, feed: str) -> str`, `run_prefix(interval_end: datetime) -> str`(= `raw/dt=…/` 아래 해당 실행 파일을 찾기 위한 날짜 접두어)
 
-- [ ] **Step 1: 실패하는 테스트**
+- [x] **Step 1: 실패하는 테스트**
 ```python
 END = datetime(2026, 11, 4, 3, 0, tzinfo=timezone.utc)
 
@@ -174,8 +174,8 @@ def test_run_id_is_deterministic_and_differs_by_interval():
     assert run_id(END) != run_id(END + timedelta(hours=1))
     assert ":" not in raw_key(END, "yna", "politics")
 ```
-- [ ] **Step 2:** 실패 확인 → **Step 3:** 구현(`uuid5(NAMESPACE_URL, f"{dag_id}|{interval_end_utc.isoformat()}")`) → **Step 4:** 통과 확인
-- [ ] **Step 5:** 커밋 `feat: add deterministic run id and raw key`
+- [x] **Step 2:** 실패 확인 → **Step 3:** 구현(`uuid5(NAMESPACE_URL, f"{dag_id}|{interval_end_utc.isoformat()}")`) → **Step 4:** 통과 확인
+- [x] **Step 5:** 커밋 `feat: add deterministic run id and raw key`
 
 ---
 
@@ -193,9 +193,9 @@ def test_run_id_is_deterministic_and_differs_by_interval():
   - `build_envelope(spec: FeedSpec, requested_at: datetime, status: int, headers: Mapping[str, str], body: str | None) -> Envelope`
   - `to_bytes(env: Envelope) -> bytes` (UTF-8 JSON, `sort_keys=True`, `ensure_ascii=False`), `from_bytes(data: bytes) -> Envelope`
 
-- [ ] **Step 1: 실패하는 테스트** — 200: `body_sha256 == sha256(body.encode()).hexdigest()`, `from_bytes(to_bytes(e)) == e` / 304: `body is None` 이고 `body_sha256 is None` / `status` 가 200·304가 아니면 `ValueError` / 같은 입력 → 같은 바이트
-- [ ] **Step 2~4:** 실패 확인 → 구현 → 통과 확인
-- [ ] **Step 5:** 커밋 `feat: add raw envelope model`
+- [x] **Step 1: 실패하는 테스트** — 200: `body_sha256 == sha256(body.encode()).hexdigest()`, `from_bytes(to_bytes(e)) == e` / 304: `body is None` 이고 `body_sha256 is None` / `status` 가 200·304가 아니면 `ValueError` / 같은 입력 → 같은 바이트
+- [x] **Step 2~4:** 실패 확인 → 구현 → 통과 확인
+- [x] **Step 5:** 커밋 `feat: add raw envelope model`
 
 ---
 
@@ -216,7 +216,7 @@ def test_run_id_is_deterministic_and_differs_by_interval():
 - 요청 헤더: User-Agent(전역 제약), `If-None-Match`, `If-Modified-Since`
 - 200·304 → 반환. 재시도 대상 아닌 4xx → 즉시 `FetchError`. 시도 소진 → `FetchError`
 
-- [ ] **Step 1: 실패하는 테스트** (가짜 세션 사용)
+- [x] **Step 1: 실패하는 테스트** (가짜 세션 사용)
 ```python
 def test_sends_conditional_headers_and_returns_304(): ...
 def test_retries_503_then_succeeds_with_waits_2_then_4(): # sleep 호출 [≈2.0, ≈4.0] (±20%)
@@ -225,8 +225,8 @@ def test_does_not_retry_404():  # 시도 1번, FetchError
 def test_connection_error_is_retried_then_raises_after_3_attempts():
 def test_sets_user_agent():
 ```
-- [ ] **Step 2~4:** 실패 확인 → 구현 → 통과 확인
-- [ ] **Step 5:** 커밋 `feat: add conditional RSS fetch with bounded retries`
+- [x] **Step 2~4:** 실패 확인 → 구현 → 통과 확인
+- [x] **Step 5:** 커밋 `feat: add conditional RSS fetch with bounded retries`
 
 ---
 
@@ -246,7 +246,7 @@ def test_sets_user_agent():
 - 발행 시각 = `pubDate`(RFC 822) 또는 `dc:date`(ISO). 없거나 못 읽으면 그 항목 제외 + `parse_failed += 1`
 - XML 자체가 깨지면 `ParseResult([], 0)`가 아니라 `FeedParseError` 발생 (Task 11이 피드 실패로 기록)
 
-- [ ] **Step 1: 실패하는 테스트** — 고정 샘플 사용
+- [x] **Step 1: 실패하는 테스트** — 고정 샘플 사용
 ```python
 @pytest.mark.parametrize("name,count", [("yna_politics.xml", 120), ("khan_politics.xml", 50), ("donga_politics.xml", 50)])
 def test_parses_fixture_item_counts(name, count): ...
@@ -257,8 +257,8 @@ def test_broken_xml_raises_feed_parse_error():
 def test_304_envelope_returns_empty_result():
 ```
 - 샘플 파일 이름은 Task 0 복사본 기준(`{source}_{섹션}.xml`). 건수는 그 파일 기준으로 맞춤
-- [ ] **Step 2~4:** 실패 확인 → 구현(`xml.etree.ElementTree`, 네임스페이스 `dc`·`content`) → 통과 확인
-- [ ] **Step 5:** 커밋 `feat: parse RSS items with UTC timestamps`
+- [x] **Step 2~4:** 실패 확인 → 구현(`xml.etree.ElementTree`, 네임스페이스 `dc`·`content`) → 통과 확인
+- [x] **Step 5:** 커밋 `feat: parse RSS items with UTC timestamps`
 
 ---
 
@@ -273,7 +273,7 @@ def test_304_envelope_returns_empty_result():
 - 규칙: yna `/view/(AKR\d+)` · khan `/article/(\d+)` · donga `/article/all/\d{8}/(\d+)/` · 못 뽑으면 정규화 URL(소문자 호스트, `https`, 쿼리·`#` 제거, 끝 `/` 제거)
 - 표시 링크: guid가 `http`로 시작하면 guid, 아니면 쿼리 뗀 link (끝 `/` 제거)
 
-- [ ] **Step 1: 실패하는 테스트**
+- [x] **Step 1: 실패하는 테스트**
 ```python
 def test_yna(): assert article_key("yna", "https://www.yna.co.kr/view/AKR20261104055151504", None) == ArticleKey("yna", "AKR20261104055151504")
 def test_khan_ignores_utm():
@@ -286,8 +286,8 @@ def test_donga_same_article_with_suffix_1_and_2():
 def test_fallback_normalized_url(): ...
 def test_display_link_prefers_guid_and_strips_utm(): ...
 ```
-- [ ] **Step 2~4:** 실패 확인 → 구현 → 통과 확인
-- [ ] **Step 5:** 커밋 `feat: derive stable article keys per publisher`
+- [x] **Step 2~4:** 실패 확인 → 구현 → 통과 확인
+- [x] **Step 5:** 커밋 `feat: derive stable article keys per publisher`
 
 ---
 
@@ -306,7 +306,7 @@ def test_display_link_prefers_guid_and_strips_utm(): ...
 - 제목 앞 `[...]`·`【...】` 머리말을 반복해서 읽음: 형식 태그 → 지움, 공지 태그 → `excluded=True`, 그 밖 → 괄호만 벗기고 내용 유지
 - 요약: 앞의 `(지역=연합뉴스)`, `OOO 기자 =`/`OOO 특파원 =` 제거, 끝의 사진 출처(`연합뉴스`·`뉴스1`·`뉴시스`·`경향신문`·`동아일보`, 앞에 `/`·`ⓒ` 가능) 제거
 
-- [ ] **Step 1: 실패하는 테스트**
+- [x] **Step 1: 실패하는 테스트**
 ```python
 def test_format_tag_removed(): assert clean_title("[속보]尹 선거법 2심 …").text == "尹 선거법 2심 …"
 def test_notice_tag_excludes(): assert clean_title("[게시판] 행사 안내").excluded is True
@@ -317,8 +317,8 @@ def test_yna_lead_removed():
     assert clean_summary(s) == "국내 최대 규모의 경쟁 독립영화제"
 def test_trailing_photo_credit_removed(): ...
 ```
-- [ ] **Step 2~4:** 실패 확인 → 구현 → 통과 확인
-- [ ] **Step 5:** 커밋 `feat: clean title tags and summary bylines`
+- [x] **Step 2~4:** 실패 확인 → 구현 → 통과 확인
+- [x] **Step 5:** 커밋 `feat: clean title tags and summary bylines`
 
 ---
 
@@ -348,7 +348,7 @@ hanja_map (이 순서, 긴 것 먼저):
 - `analyzer_version`이 설치된 kiwipiepy 버전과 다르면 `load_rules`가 `RuntimeError`
 - Kiwi 인스턴스는 모듈에서 한 번만 생성
 
-- [ ] **Step 1: 실패하는 테스트**
+- [x] **Step 1: 실패하는 테스트**
 ```python
 def test_hanja_abbreviations_expanded():
     kws = extract_keywords("美 관세 압박에 中企 수출 비상", load_rules())
@@ -361,8 +361,8 @@ def test_version_ignores_yaml_formatting(tmp_path): # 같은 내용, 다른 들�
 def test_version_changes_when_stopword_added(): ...
 def test_json_round_trip(): assert RuleSet.from_json(r.to_json()) == r
 ```
-- [ ] **Step 2~4:** 실패 확인 → 구현 → 통과 확인
-- [ ] **Step 5:** 커밋 `feat: add versioned keyword rules with Kiwi`
+- [x] **Step 2~4:** 실패 확인 → 구현 → 통과 확인
+- [x] **Step 5:** 커밋 `feat: add versioned keyword rules with Kiwi`
 
 ---
 
@@ -379,7 +379,7 @@ def test_json_round_trip(): assert RuleSet.from_json(r.to_json()) == r
   - `@dataclass(frozen=True) QualityReport(item_count: int, missing_required: int, duplicate_keys: int)`
   - `check_items(items: list[tuple[ArticleKey, FeedItem]]) -> QualityReport` — 임시 JSONL을 DuckDB `read_json`으로 읽어 SQL로 셈
 
-- [ ] **Step 1: 실패하는 테스트**
+- [x] **Step 1: 실패하는 테스트**
 ```python
 def test_put_if_absent_only_first_wins(tmp_path):
     s = LocalRawStore(tmp_path); assert s.put_if_absent("raw/a.json", b"1") is True
@@ -389,8 +389,8 @@ def test_no_partial_file_visible(tmp_path):  # 쓰기 중 예외 → exists Fals
 def test_list_and_delete_prefix(tmp_path): ...
 def test_quality_counts_duplicates_and_missing(): ...
 ```
-- [ ] **Step 2~4:** 실패 확인 → 구현 → 통과 확인
-- [ ] **Step 5:** 커밋 `feat: add write-once local raw store and DuckDB checks`
+- [x] **Step 2~4:** 실패 확인 → 구현 → 통과 확인
+- [x] **Step 5:** 커밋 `feat: add write-once local raw store and DuckDB checks`
 
 ---
 
@@ -444,8 +444,8 @@ article_blocklist  source · source_article_id PK · requested_at · reason · r
 - `pipeline_runs`·`pipeline_feed_runs`는 `MERGE`로 쓰기 (재실행 시 같은 행 갱신)
 - outcome: 피드 전부 성공 → SUCCESS(새 기사 0이면 EMPTY) / 일부 실패 → PARTIAL_FAILURE / 전부 실패 → FAILURE
 
-- [ ] **Step 1:** `conftest.py`: `OracleDbContainer("gvenzl/oracle-free:23-slim")` 세션 범위로 띄우고, `backend-spring/src/main/resources/db/migration/V*.sql`을 버전 순으로 `;` 단위 실행 (이 폴더에는 PL/SQL 블록 없음 — 확인됨). 테스트마다 v2 테이블 비우기
-- [ ] **Step 2: 실패하는 통합 테스트** (`@pytest.mark.integration`)
+- [x] **Step 1:** `conftest.py`: `OracleDbContainer("gvenzl/oracle-free:23-slim")` 세션 범위로 띄우고, `backend-spring/src/main/resources/db/migration/V*.sql`을 버전 순으로 `;` 단위 실행 (이 폴더에는 PL/SQL 블록 없음 — 확인됨). 테스트마다 v2 테이블 비우기
+- [x] **Step 2: 실패하는 통합 테스트** (`@pytest.mark.integration`)
 ```python
 def test_same_run_twice_gives_same_rows(conn, sample_run):
     s1 = load_run(conn, sample_run, rules); rows1 = counts(conn)
@@ -462,10 +462,10 @@ def test_same_article_in_two_feeds_keeps_first_feed_category(conn): ...   # Revi
 def test_building_rule_version_also_written(conn, sample_run): ...
 def test_feed_run_counts_reconcile(conn, sample_run): # CHECK 제약 위반 없이 기록
 ```
-- [ ] **Step 3:** Docker 켠 상태에서 `pytest pipeline/tests/integration -m integration -q` → 실패 확인
-- [ ] **Step 4:** 마이그레이션 + `db.py` + `load.py` 구현
-- [ ] **Step 5:** 통합 테스트 통과 확인, 단위 테스트 전체 통과 확인
-- [ ] **Step 6:** 커밋 `feat: add v2 silver tables and idempotent run loader`
+- [x] **Step 3:** Docker 켠 상태에서 `pytest pipeline/tests/integration -m integration -q` → 실패 확인
+- [x] **Step 4:** 마이그레이션 + `db.py` + `load.py` 구현
+- [x] **Step 5:** 통합 테스트 통과 확인, 단위 테스트 전체 통과 확인
+- [x] **Step 6:** 커밋 `feat: add v2 silver tables and idempotent run loader`
 
 ---
 
@@ -483,7 +483,7 @@ def test_feed_run_counts_reconcile(conn, sample_run): # CHECK 제약 위반 없�
 - 순서: 백필 → 원본 있으면 `skipped_backfill`, 없으면 `missing_in_backfill`(요청 안 함) / 평소 → 원본 있으면 `skipped_exists` / 없으면 요청 → 200·304 봉투 → 파싱·검사(기록만) → `put_if_absent` / `FetchError` → `failed`(원본 없음)
 - `validators` = 그 피드의 직전 성공 기록(ETag, Last-Modified) — 호출하는 쪽이 `pipeline_feed_runs`에서 넘김
 
-- [ ] **Step 1: 실패하는 테스트**
+- [x] **Step 1: 실패하는 테스트**
 ```python
 def test_backfill_never_calls_fetch(): ...            # fetch 호출 0회
 def test_existing_raw_skips_fetch(): ...
@@ -491,8 +491,8 @@ def test_304_saves_bodyless_envelope(): ...           # Review Focus 3
 def test_fetch_error_saves_nothing(): ...
 def test_broken_xml_is_still_saved_and_reported(): ... # 계획에서 정한 것 2
 ```
-- [ ] **Step 2~4:** 실패 확인 → 구현 → 통과 확인
-- [ ] **Step 5:** 커밋 `feat: add write-once feed collection step`
+- [x] **Step 2~4:** 실패 확인 → 구현 → 통과 확인
+- [x] **Step 5:** 커밋 `feat: add write-once feed collection step`
 
 ---
 
@@ -508,14 +508,14 @@ def test_broken_xml_is_still_saved_and_reported(): ... # 계획에서 정한 것
 - 이 구간의 원본 키를 `feeds.yml` 순서대로 읽음 → 304·누락은 기사 0 → `LoadItem`·`FeedOutcome` 만들기 → `load_run`
 - 시작 시 `ensure_rule_version(conn, load_rules())`
 
-- [ ] **Step 1: 실패하는 통합 테스트** — 고정 샘플 17개로 `LocalRawStore`를 미리 채우고 `run_type="backfill"`로 처리
+- [x] **Step 1: 실패하는 통합 테스트** — 고정 샘플 17개로 `LocalRawStore`를 미리 채우고 `run_type="backfill"`로 처리
 ```python
 def test_process_fixture_interval_loads_articles_and_keywords(conn, seeded_store): ...
 def test_reprocessing_same_interval_is_idempotent(conn, seeded_store): ...
 def test_304_only_interval_loads_zero_articles_and_outcome_is_empty(conn, store): ...
 ```
-- [ ] **Step 2~4:** 실패 확인 → 구현 → 통과 확인
-- [ ] **Step 5:** 커밋 `feat: process raw interval into silver`
+- [x] **Step 2~4:** 실패 확인 → 구현 → 통과 확인
+- [x] **Step 5:** 커밋 `feat: process raw interval into silver`
 
 ---
 
@@ -530,11 +530,11 @@ def test_304_only_interval_loads_zero_articles_and_outcome_is_empty(conn, store)
 - Consumes: `load_feeds`, `collect_feed`, `process_interval`, `LocalRawStore`, `connect`
 - Produces: `python -m trend_pipeline run --interval-end 2026-11-04T03:00:00Z --run-type scheduled|backfill|manual --raw-root PATH` → 피드별 수집(평소만) 후 처리, 요약 한 줄 출력 `run_id=… outcome=… new=… existing=… keywords=…`, 실패 시 종료 코드 1
 
-- [ ] **Step 1: 실패하는 통합 테스트** — 샘플로 채운 원본 폴더 + `--run-type backfill` → 종료 코드 0, 출력에 `outcome=SUCCESS`, 같은 명령 두 번 → 두 번째 `new=0`
-- [ ] **Step 2~4:** 실패 확인 → 구현(`argparse`) → 통과 확인
-- [ ] **Step 5:** 단위 + 통합 전체 실행 `pytest pipeline/tests -q` 통과 확인
-- [ ] **Step 6:** 실제 수집 1회 수동 확인: `--run-type manual`로 지금 구간 실행 → 원본 17개 생성·적재 확인 (네트워크 사용, 사용자 승인 뒤)
-- [ ] **Step 7:** 커밋 `feat: add pipeline CLI for local end-to-end runs`
+- [x] **Step 1: 실패하는 통합 테스트** — 샘플로 채운 원본 폴더 + `--run-type backfill` → 종료 코드 0, 출력에 `outcome=SUCCESS`, 같은 명령 두 번 → 두 번째 `new=0`
+- [x] **Step 2~4:** 실패 확인 → 구현(`argparse`) → 통과 확인
+- [x] **Step 5:** 단위 + 통합 전체 실행 `pytest pipeline/tests -q` 통과 확인
+- [x] **Step 6:** 실제 수집 1회 수동 확인: `--run-type manual`로 지금 구간 실행 → 원본 17개 생성·적재 확인 (네트워크 사용, 사용자 승인 뒤)
+- [x] **Step 7:** 커밋 `feat: add pipeline CLI for local end-to-end runs`
 - [ ] **Step 8:** 사용자 확인 후 푸시·PR 생성 (PR 설명에 결정 근거 링크)
 
 ---
