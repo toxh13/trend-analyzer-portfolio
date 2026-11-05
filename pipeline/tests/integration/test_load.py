@@ -238,21 +238,34 @@ def test_rerun_keeps_run_type_of_first_load(conn, sample_run, rules):
 CONTENTION_GRACE = 1.0
 
 
+def in_category(run: RunLoadInput, category: str) -> RunLoadInput:
+    """같은 기사들을 다른 카테고리 피드(같은 매체)에서 본 실행으로 바꾼다."""
+    moved = {outcome.feed: feed_spec(outcome.feed.source, category) for outcome in run.feeds}
+    return replace(
+        run,
+        items=[replace(item, feed=moved[item.feed]) for item in run.items],
+        feeds=[replace(outcome, feed=moved[outcome.feed]) for outcome in run.feeds],
+    )
+
+
 @pytest.mark.parametrize(
-    ("preloaded", "contended", "b_attempts"),
+    ("preload", "contended", "b_attempts"),
     [
         # 처음 적재: B의 기사 MERGE가 A의 커밋 전 INSERT에 막혔다가 A가 커밋하면 ORA-00001 → B는 처음부터 다시 한다
-        pytest.param(False, "_merge_articles", 2, id="first-load"),
+        pytest.param(None, "_merge_articles", 2, id="first-load"),
         # 다시 적재: B의 키워드 DELETE가 A가 지운(커밋 전) 행에 막혔다가 A가 커밋하면 이어서 끝낸다(재시도 없음)
-        pytest.param(True, "_delete_keywords", 1, id="rerun"),
+        pytest.param("same", "_delete_keywords", 1, id="rerun"),
+        # 이미 있는 기사가 새 섹션(정치)에 나옴: B의 카테고리 MERGE가 A의 커밋 전 INSERT에 막혔다가 ORA-00001 → 다시 한다
+        pytest.param("경제", "_merge_categories", 2, id="new-category"),
     ],
 )
-def test_concurrent_runs_no_duplicates_no_errors(
-    conn, sample_run, rules, monkeypatch, preloaded, contended, b_attempts
-):
+def test_concurrent_runs_no_duplicates_no_errors(conn, sample_run, rules, monkeypatch, preload, contended, b_attempts):
     expected = len(loadable_keys(sample_run))
-    if preloaded:
-        load_run(conn, sample_run, rules)  # 아래에서 세는 시도 횟수에 들어가지 않게 감싸기 전에 적재한다
+    # 아래에서 세는 시도 횟수에 들어가지 않게 감싸기 전에 적재한다
+    if preload == "same":
+        load_run(conn, sample_run, rules)
+    elif preload is not None:
+        load_run(conn, in_category(sample_run, preload), rules)
 
     attempts: Counter[str] = Counter()  # 스레드 이름(A, B) → _load_once 호출 수
     a_done, b_entered, b_done = threading.Event(), threading.Event(), threading.Event()
@@ -305,7 +318,7 @@ def test_concurrent_runs_no_duplicates_no_errors(
     a, b = results["A"], results["B"]
     # 실행 기록은 구간 기준이라 둘 다 같은 건수를 본다. 실제로 넣은 행은 (처음 적재일 때) A에만 있다
     assert (a.new_articles, a.existing_articles, a.outcome) == (expected, 0, "SUCCESS")
-    assert (a.inserted_articles, b.inserted_articles) == ((0, 0) if preloaded else (expected, 0))
+    assert (a.inserted_articles, b.inserted_articles) == ((0, 0) if preload else (expected, 0))
     assert replace(b, inserted_articles=a.inserted_articles) == a
     assert a.keyword_rows > 0
     assert duplicate_rows(conn) == ([], [])
@@ -313,7 +326,8 @@ def test_concurrent_runs_no_duplicates_no_errors(
         "pipeline_feed_runs": 2,
         "pipeline_runs": 1,
         "news_keywords": a.keyword_rows,
-        "news_article_categories": expected,  # 샘플은 모두 정치 피드라 기사마다 카테고리 하나
+        # 샘플은 모두 정치 피드라 기사마다 카테고리 하나. 다른 섹션으로 미리 적재했으면 하나 더
+        "news_article_categories": expected * (2 if preload not in (None, "same") else 1),
         "news_articles": expected,
         "article_blocklist": 0,
         "keyword_rule_versions": 1,
