@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - 'pipeline/**'
+      - 'backend-spring/src/main/resources/db/migration/**'
       - '.github/workflows/pipeline-tests.yml'
   pull_request:
     paths:
       - 'pipeline/**'
+      - 'backend-spring/src/main/resources/db/migration/**'
       - '.github/workflows/pipeline-tests.yml'
 
 permissions:
@@ -15,7 +17,6 @@ permissions:
 
 jobs:
   # 단위 테스트: 외부 의존(Docker, Oracle) 없이 실행됩니다.
-  # 통합 테스트(testcontainers Oracle)는 별도 `integration` 잡으로 이 아래에 추가합니다.
   unit:
     name: unit
     runs-on: ubuntu-latest
@@ -29,3 +30,24 @@ jobs:
         run: pip install -e "pipeline[test]"
       - name: Run unit tests
         run: pytest pipeline/tests/unit -q
+
+  # 통합 테스트: testcontainers로 Oracle Free 23 컨테이너를 띄우고 Flyway 마이그레이션(V*.sql)을 적용한 뒤
+  # 멱등 적재(두 번 실행 · 동시 실행 · 중간 실패 · 중복 0)를 검증합니다. ubuntu-latest 러너의 Docker를 씁니다.
+  integration:
+    name: integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # 컨테이너 준비 대기 한도(초). 기본 120초는 느린 러너에서 모자랄 수 있습니다.
+      TC_MAX_TRIES: '300'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install pipeline package
+        run: pip install -e "pipeline[test]"
+      - name: Pull Oracle image
+        run: docker pull gvenzl/oracle-free:23-slim
+      - name: Run integration tests
+        run: pytest pipeline/tests/integration -m integration -q
