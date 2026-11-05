@@ -134,6 +134,7 @@ def insert_feed_run(
     etag: str | None,
     last_modified: str | None,
     spec: FeedSpec = SPEC,
+    error: str | None = None,
 ) -> None:
     run = run_id(interval_end)
     naive = interval_end.astimezone(timezone.utc).replace(tzinfo=None)
@@ -149,13 +150,14 @@ def insert_feed_run(
         cursor.execute(
             "INSERT INTO pipeline_feed_runs (run_id, source, feed, http_status, etag, last_modified, item_count, "
             "new_articles, existing_articles, excluded_notice, excluded_blocklist, parse_failed, missing_required, "
-            "duplicate_keys) VALUES (:r, :s, :f, :st, :etag, :lm, 0, 0, 0, 0, 0, 0, 0, 0)",
+            "duplicate_keys, error) VALUES (:r, :s, :f, :st, :etag, :lm, 0, 0, 0, 0, 0, 0, 0, 0, :err)",
             r=run,
             s=spec.source,
             f=spec.feed,
             st=status,
             etag=etag,
             lm=last_modified,
+            err=error,
         )
     conn.commit()
 
@@ -175,4 +177,11 @@ def test_last_validators_ignores_failed_and_validatorless_rows(conn: oracledb.Co
     insert_feed_run(conn, INTERVAL_END + timedelta(hours=1), 503, '"bad"', None)
     insert_feed_run(conn, INTERVAL_END + timedelta(hours=2), None, None, None)
     insert_feed_run(conn, INTERVAL_END + timedelta(hours=3), 200, None, None)
+    assert last_validators(conn, SPEC) == ('"good"', None)
+
+
+def test_last_validators_ignores_rows_with_error(conn: oracledb.Connection) -> None:
+    # 200을 받았어도 파싱이 실패한 행의 ETag를 쓰면 서버가 내용이 바뀔 때까지 304만 보내 실패가 숨는다
+    insert_feed_run(conn, INTERVAL_END, 200, '"good"', None)
+    insert_feed_run(conn, INTERVAL_END + timedelta(hours=1), 200, '"broken"', None, error="FeedParseError: bad xml")
     assert last_validators(conn, SPEC) == ('"good"', None)

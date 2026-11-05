@@ -130,7 +130,8 @@ def last_validators(conn: oracledb.Connection, spec: FeedSpec) -> tuple[str | No
     """피드의 가장 최근 (etag, last_modified)를 돌려준다. 조건부 요청에 쓴다.
 
     "가장 최근"은 실행의 구간 끝(pipeline_runs.interval_end) 기준이다. 응답을 받은 행(200·304)이면서
-    validator가 하나라도 있는 행만 본다. 없으면 (None, None).
+    오류가 없고 validator가 하나라도 있는 행만 본다. 없으면 (None, None).
+    파싱이 실패한 행의 ETag를 다시 보내면 서버가 내용이 바뀔 때까지 304만 돌려줘 실패가 가려지므로 뺀다.
     읽은 뒤 롤백해 지금의 읽기 트랜잭션을 끝낸다. 커밋하지 않은 쓰기가 있는 연결로 부르면 그 쓰기도 버려진다.
     """
     with conn.cursor() as cursor:
@@ -138,7 +139,7 @@ def last_validators(conn: oracledb.Connection, spec: FeedSpec) -> tuple[str | No
             "SELECT etag, last_modified FROM ("
             " SELECT f.etag, f.last_modified FROM pipeline_feed_runs f"
             " JOIN pipeline_runs r ON r.run_id = f.run_id"
-            " WHERE f.source = :source AND f.feed = :feed AND f.http_status IN (200, 304)"
+            " WHERE f.source = :source AND f.feed = :feed AND f.http_status IN (200, 304) AND f.error IS NULL"
             " AND (f.etag IS NOT NULL OR f.last_modified IS NOT NULL)"
             " ORDER BY r.interval_end DESC"
             ") WHERE ROWNUM = 1",
