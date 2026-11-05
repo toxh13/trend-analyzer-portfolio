@@ -500,9 +500,27 @@ def _merge_feed_runs(
                 "error": _truncate_utf8(outcome.error, _ERROR_MAX_BYTES),
             }
         )
+    _delete_stale_feed_runs(cursor, run, feeds)
     # 값이 모두 None인 열도 있어 숫자 열의 바인드 형식을 정해 둔다
     cursor.setinputsizes(http_status=oracledb.DB_TYPE_NUMBER)
     cursor.executemany(_MERGE_FEED_RUN, rows)
+
+
+def _delete_stale_feed_runs(cursor: oracledb.Cursor, run: str, feeds: Sequence[FeedOutcome]) -> None:
+    """같은 실행을 다른 피드 목록으로 다시 돌렸을 때 이번 입력에 없는 피드 행을 지운다.
+
+    지우지 않으면 빠진 피드의 옛 건수·validator·error가 남아 feed_count와 행 수가 어긋난다.
+    실행 행 MERGE 뒤에 부르므로 같은 run_id를 쓰는 동시 실행은 실행 행 잠금에서 차례로 들어온다.
+    feeds는 비어 있지 않다(_validate). 피드 수는 feeds.yml 크기(17)라 IN 목록 한도(1000)에 닿지 않는다.
+    """
+    placeholders = ", ".join(f"(:s{index}, :f{index})" for index in range(len(feeds)))
+    binds: dict[str, str] = {"run_id": run}
+    for index, outcome in enumerate(feeds):
+        binds[f"s{index}"] = outcome.feed.source
+        binds[f"f{index}"] = outcome.feed.feed
+    cursor.execute(
+        f"DELETE FROM pipeline_feed_runs WHERE run_id = :run_id AND (source, feed) NOT IN ({placeholders})", binds
+    )
 
 
 # ---------------------------------------------------------------------------

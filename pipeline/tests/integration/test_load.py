@@ -533,6 +533,26 @@ def test_feed_run_counts_reconcile(conn, sample_run, rules):
     conn.rollback()
 
 
+def test_rerun_with_fewer_feeds_drops_stale_feed_rows(conn, sample_run, rules):
+    # 처음: 피드 3개(A 성공, B 성공, C 실패). 같은 구간을 피드 A만으로 다시 실행한다(피드를 빼거나 이름을 바꾼 뒤 backfill)
+    first_feed = sample_run.feeds[0]
+    failed = outcome_for(feed_spec("yna", "경제"), 0, error="HTTP 500 Internal Server Error")
+    load_run(conn, replace(sample_run, feeds=[*sample_run.feeds, failed]), rules)
+    assert len(feed_rows(conn)) == 3
+
+    only_first = replace(
+        sample_run,
+        items=[item for item in sample_run.items if item.feed == first_feed.feed],
+        feeds=[first_feed],
+    )
+    load_run(conn, only_first, rules)
+
+    # 그 입력으로 처음 실행한 것과 같은 상태: A 행만 남고 실행 행의 피드 수도 맞는다
+    assert set(feed_rows(conn)) == {(first_feed.feed.source, first_feed.feed.feed)}
+    record = run_row(conn)
+    assert (record["feed_count"], record["failed_feed_count"], record["outcome"]) == (1, 0, "EMPTY")
+
+
 def test_outcome_partial_failure_when_some_feeds_failed(conn, sample_run, rules):
     failed = outcome_for(feed_spec("yna", "경제"), 0, error="HTTP 500 Internal Server Error")
     run = replace(sample_run, feeds=[*sample_run.feeds, failed])
