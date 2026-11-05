@@ -2,7 +2,8 @@
 
 같은 실행을 두 번, 동시에, 또는 중간 실패 뒤 다시 돌려도 남는 행이 같다(멱등).
 - 기사: 키 (source, source_article_id)로 MERGE … WHEN NOT MATCHED THEN INSERT. 이미 있는 기사는 건드리지 않는다
-- 키워드: (기사, 규칙 버전)마다 지우고 다시 쓴다
+- 키워드: (기사, 규칙 버전)마다 지우고 다시 쓴다. 항상 저장된(처음 본) 제목에서 뽑으므로
+  구간을 어떤 순서로 처리·재처리해도 같은 기사의 키워드는 같다
 - 실행 기록: 결정적 run_id로 MERGE. 다시 실행하면 같은 행을 갱신한다
 - 동시 실행끼리 같은 키를 넣다가 ORA-00001이 나면 트랜잭션 전체를 처음부터 다시 한다
 """
@@ -24,13 +25,14 @@ WRITABLE_STATUSES = ("ACTIVE", "BUILDING")
 MAX_RETRIES = 3  # ORA-00001 때 처음 시도 뒤 다시 시도하는 최대 횟수
 _ERROR_MAX_BYTES = 4000  # pipeline_feed_runs.error: VARCHAR2(4000 CHAR)라도 실제 한도는 4000바이트
 _IN_LIST_SIZE = 500  # Oracle IN 목록 한도(1000)보다 작게 나눠 조회한다
+TITLE_MAX_CHARS = 1000  # news_articles.title 열 길이. 표시용 글이라 넘치면 잘라서 넣는다
 
 
 @dataclass(frozen=True)
 class LoadItem:
     feed: FeedSpec
     key: ArticleKey
-    title: str  # 파싱한 원래 제목(머리말 포함). 키워드는 이 제목에서 뽑는다
+    title: str  # 파싱한 원래 제목(머리말 포함). 새 기사면 이 제목(최대 1000자)을 저장하고 키워드를 뽑는다
     summary: str  # 이미 정리한 요약
     link: str  # 표시용 링크
     published_at: datetime  # timezone 정보가 있는 시각
@@ -77,7 +79,8 @@ class _Plan:
     interval_end: datetime  # naive UTC
     ordered: list[LoadItem]  # feeds 순서로 정렬(피드 안에서는 원래 순서)
     winners: dict[ArticleKey, LoadItem]  # 기사 키마다 이번 실행에서 처음 나온 공지 아닌 항목
-    keywords: dict[tuple[ArticleKey, str], frozenset[str]]  # (기사 키, 규칙 버전) → 키워드 집합
+    # (제목, 규칙 버전) → 키워드 집합. 새 기사의 제목을 트랜잭션 밖에서 미리 뽑아 둔 것(순수 함수 결과)
+    keywords: dict[tuple[str, str], frozenset[str]]
 
 
 def load_run(conn: oracledb.Connection, data: RunLoadInput, rule_sets: Mapping[str, RuleSet]) -> LoadStats:
@@ -97,7 +100,7 @@ def load_run(conn: oracledb.Connection, data: RunLoadInput, rule_sets: Mapping[s
     for attempt in range(MAX_RETRIES + 1):
         try:
             with conn.cursor() as cursor:
-                stats = _load_once(cursor, plan, data.feeds, data.run_type, sorted(rule_sets), started_at)
+                stats = _load_once(cursor, plan, data.feeds, data.run_type, rule_sets, started_at)
             conn.commit()
             return stats
         except BaseException as exc:
@@ -179,9 +182,10 @@ def _plan(data: RunLoadInput, rule_sets: Mapping[str, RuleSet]) -> _Plan:
         if not item.title_excluded and item.key not in winners:
             winners[item.key] = item
 
+    # Kiwi 분석은 무거워 트랜잭션 밖에서 미리 한다. 이미 있는 기사의 저장 제목이 다르면 시도 안에서 따로 뽑는다
     keywords = {
-        (key, version): extract_keywords(item.title, rules)
-        for key, item in winners.items()
+        (title, version): extract_keywords(title, rules)
+        for title in {_stored_title(item.title) for item in winners.values()}
         for version, rules in rule_sets.items()
     }
     return _Plan(
@@ -241,7 +245,7 @@ def _load_once(
     plan: _Plan,
     feeds: Sequence[FeedOutcome],
     run_type: str,
-    versions: list[str],
+    rule_sets: Mapping[str, RuleSet],
     started_at: datetime,
 ) -> LoadStats:
     blocked = {
@@ -254,15 +258,21 @@ def _load_once(
     loadable = sorted((key for key in plan.winners if key not in blocked), key=_sort_key)
 
     inserted = _merge_articles(cursor, [plan.winners[key] for key in loadable], plan.interval_end)
-    ids = _article_ids(cursor, loadable)
+    stored = _stored_articles(cursor, loadable)
 
-    by_id = sorted(loadable, key=lambda key: ids[key])
-    pairs = [(ids[key], version) for key in by_id for version in versions]
+    # 키워드 = f(저장된 제목, 규칙 버전). 이번 실행 항목의 제목이 바뀌었어도 처음 본 제목을 쓴다
+    def keywords_for(title: str, version: str) -> frozenset[str]:
+        found = plan.keywords.get((title, version))
+        return found if found is not None else extract_keywords(title, rule_sets[version])
+
+    versions = sorted(rule_sets)
+    by_id = sorted(loadable, key=lambda key: stored[key][0])
+    pairs = [(stored[key][0], version) for key in by_id for version in versions]
     keyword_rows = [
-        (ids[key], keyword, version)
+        (stored[key][0], keyword, version)
         for key in by_id
         for version in versions
-        for keyword in sorted(plan.keywords[(key, version)])
+        for keyword in sorted(keywords_for(stored[key][1], version))
     ]
     _delete_keywords(cursor, pairs)
     _insert_keywords(cursor, keyword_rows)
@@ -331,7 +341,7 @@ def _merge_articles(cursor: oracledb.Cursor, items: list[LoadItem], interval_end
             "source": item.key.source,
             "source_article_id": item.key.source_article_id,
             "category": item.feed.category,
-            "title": item.title,
+            "title": _stored_title(item.title),
             "summary": item.summary,
             "link": item.link,
             "published_at": _to_db_time(item.published_at),
@@ -354,13 +364,17 @@ def _merge_articles(cursor: oracledb.Cursor, items: list[LoadItem], interval_end
     return {item.key for item, rowcount in zip(items, affected) if rowcount == 1}
 
 
-def _article_ids(cursor: oracledb.Cursor, keys: list[ArticleKey]) -> dict[ArticleKey, int]:
-    found = _select_by_keys(cursor, "SELECT source, source_article_id, id FROM news_articles", keys)
-    ids = {ArticleKey(source, source_article_id): article_id for source, source_article_id, article_id in found}
-    missing = [key for key in keys if key not in ids]
+def _stored_articles(cursor: oracledb.Cursor, keys: list[ArticleKey]) -> dict[ArticleKey, tuple[int, str]]:
+    """기사 키 → (id, 저장된 제목). MERGE 뒤에 읽으므로 이번에 넣은 기사와 이미 있던 기사가 모두 나온다."""
+    found = _select_by_keys(cursor, "SELECT source, source_article_id, id, title FROM news_articles", keys)
+    stored = {
+        ArticleKey(source, source_article_id): (article_id, title)
+        for source, source_article_id, article_id, title in found
+    }
+    missing = [key for key in keys if key not in stored]
     if missing:
-        raise RuntimeError(f"MERGE 뒤에도 기사 id를 찾지 못했다: {missing[:3]}")
-    return ids
+        raise RuntimeError(f"MERGE 뒤에도 기사를 찾지 못했다: {missing[:3]}")
+    return stored
 
 
 def _delete_keywords(cursor: oracledb.Cursor, pairs: list[tuple[int, str]]) -> None:
@@ -508,6 +522,11 @@ def _select_by_keys(cursor: oracledb.Cursor, select: str, keys: list[ArticleKey]
         cursor.execute(f"{select} WHERE (source, source_article_id) IN ({placeholders})", binds)
         found.extend(cursor.fetchall())
     return found
+
+
+def _stored_title(title: str) -> str:
+    # 제목은 화면 표시용이라 열 길이를 넘으면 잘라서 저장한다(기사 키·링크는 자르지 않는다)
+    return title[:TITLE_MAX_CHARS]
 
 
 def _sort_key(key: ArticleKey) -> tuple[str, str]:

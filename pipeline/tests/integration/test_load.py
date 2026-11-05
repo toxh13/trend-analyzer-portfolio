@@ -367,6 +367,64 @@ def test_same_article_in_two_feeds_keeps_first_feed_category(conn, rules):
     ) == [("정치", datetime(2026, 11, 4, 3, 0))]
 
 
+def keywords_of(conn: oracledb.Connection, number: str, version: str) -> set[str]:
+    found = rows(
+        conn,
+        "SELECT k.keyword FROM news_keywords k JOIN news_articles a ON a.id = k.article_id"
+        " WHERE a.source_article_id = :id AND k.rule_version = :version",
+        id=number,
+        version=version,
+    )
+    return {keyword for (keyword,) in found}
+
+
+def test_keywords_follow_stored_first_seen_title(conn, rules):
+    politics = feed_spec("yna", "정치")
+    number = "AKR20261104000700007"
+    first_title, edited_title = "국회 예산안 처리 합의", "반도체 수출 급증 전망"
+    (version,) = rules
+    first_keywords = extract_keywords(first_title, rules[version])
+    assert first_keywords and first_keywords.isdisjoint(extract_keywords(edited_title, rules[version]))
+
+    def run_at(hours: int, title: str) -> RunLoadInput:
+        return RunLoadInput(
+            interval_end=INTERVAL_END + timedelta(hours=hours),
+            run_type="scheduled",
+            items=[article(politics, number, title)],
+            feeds=[outcome_for(politics, 1)],
+        )
+
+    load_run(conn, run_at(0, first_title), rules)
+    # 다음 구간에서 언론사가 제목을 고쳐도 저장 제목과 키워드는 처음 본 제목 그대로다
+    later = load_run(conn, run_at(1, edited_title), rules)
+    assert rows(conn, "SELECT title FROM news_articles") == [(first_title,)]
+    assert keywords_of(conn, number, version) == first_keywords
+    assert later.keyword_rows == len(first_keywords)
+
+    # 앞 구간을 다시 처리해도(처리 순서가 바뀌어도) 결과가 같다
+    load_run(conn, run_at(0, first_title), rules)
+    load_run(conn, run_at(1, edited_title), rules)
+    assert keywords_of(conn, number, version) == first_keywords
+
+
+def test_title_over_column_length_is_truncated(conn, rules):
+    politics = feed_spec("yna", "정치")
+    long_title = ("국회 예산안 처리 " * 200)[:1200]
+    run = RunLoadInput(
+        interval_end=INTERVAL_END,
+        run_type="manual",
+        items=[article(politics, "AKR20261104000800008", long_title)],
+        feeds=[outcome_for(politics, 1)],
+    )
+
+    stats = load_run(conn, run, rules)
+
+    assert stats.outcome == "SUCCESS" and stats.new_articles == 1
+    assert rows(conn, "SELECT LENGTH(title), title FROM news_articles") == [(1000, long_title[:1000])]
+    (version,) = rules
+    assert keywords_of(conn, "AKR20261104000800008", version) == extract_keywords(long_title[:1000], rules[version])
+
+
 def test_times_are_stored_as_utc(conn, rules):
     politics = feed_spec("yna", "정치")
     published_kst = datetime(2026, 11, 4, 12, 15, tzinfo=KST)
