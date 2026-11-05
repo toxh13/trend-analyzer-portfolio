@@ -77,12 +77,14 @@ IT/과학  —                 · khan science_news · donga science
 - 주기: 1시간. 조건부 요청(ETag·Last-Modified)
 - 재시도: HTTP 최대 3번(2초 → 4초, Retry-After 최대 60초), 대상 = 연결 오류·408·429·5xx. Airflow 작업 재시도 1번(5분), 제한 10분
 - 백필 실행에서는 요청 안 함 (원본 존재만 확인)
+- 정기·수동 실행은 구간 끝이 지금 − 1시간 ~ 지금 + 5분일 때만 요청. 지난 구간은 백필로만 (✅ 2026-11-05. 지금 피드가 옛 구간 원본으로 굳는 것 방지. 1시간은 임시값, 검사는 수집 함수 안)
 
 근거: [[04_수집]]
 
 ## 5. 원본 저장
 
-- 봉투 JSON 1개 = 피드 1회 요청: 요청(URL·시각·크롤러 버전) · 응답(HTTP 상태·ETag·Last-Modified·Content-Type) · 본문 sha256 · XML 원문 · `envelope_version`
+- 봉투 JSON 1개 = 피드 1회 요청: 요청(URL·시각·크롤러 버전) · 응답(HTTP 상태·ETag·Last-Modified·Content-Type) · 받은 바이트(base64) · 그 바이트의 sha256 · `envelope_version`
+- 봉투 v2 (✅ 2026-11-05): 글자 디코드는 처리 단계가 원본을 읽을 때(Content-Type charset, 없으면 UTF-8). 읽을 때 sha256 대조, 다르면 그 피드 실패. v1(디코드한 글자 저장)도 읽음
 - 200·304 저장, 실패는 실행 기록만
 - 키: `raw/dt=YYYY-MM-DD/source={yna|khan|donga}/feed={섹션}/run=YYYYMMDDTHHMMSSZ.json` (구간 끝, UTC)
 - 쓰기: 로컬 임시 파일 → DuckDB 검사 → 조건부 업로드(이미 있으면 실패) → checksum 대조
@@ -123,7 +125,8 @@ IT/과학  —                 · khan science_news · donga science
 ### 7-1. 실버·운영 (Flyway 새 마이그레이션)
 | 테이블 | 핵심 열 | 키·제약 |
 |---|---|---|
-| `articles` (변경) | source · source_article_id · category · title · summary · source_url(정리) · published_at · first_seen_run_end | `UNIQUE(source, source_article_id)` |
+| `articles` (변경) | source · source_article_id · title · summary · source_url(정리) · published_at · first_seen_run_end | `UNIQUE(source, source_article_id)` |
+| `news_article_categories` 기사-카테고리 (✅ 2026-11-05 추가 결정) | article_id · category | `PK(article_id, category)`. 다대다: 두 섹션에 실린 기사는 두 카테고리 모두. `category` 열 대체. 없으면 넣기만(지우지 않음) → 본 섹션의 합집합이라 처리 순서와 무관. 골드 구간 배정은 `published_at`, `first_seen_run_end`는 기록용 ([[06_처리와 적재]] "계획 2 앞두고 정한 것") |
 | `article_keywords` (변경) | article_id · keyword · rule_version | `PK(article_id, keyword, rule_version)` |
 | `keyword_rule_versions` (새) | rule_version · rule_json · status(BUILDING·ACTIVE·RETIRED) · created_at | ACTIVE는 1개 |
 | `crawl_batch_runs` (변경) | run_id(결정적) · outcome 4단계 · 건수 대조 | 대조 식을 v2 흐름으로 다시 정의: 피드 항목 수 = 새 기사 + 이미 있음 + 제외(공지·차단) + 파싱 실패. v1의 선택·한도·전송 건수 열은 삭제 |
@@ -205,8 +208,8 @@ v_nlq_* 뷰 4개          자연어→SQL 전용
 - [x] **구현 저장소:** 공개 `trend-analyzer-portfolio`에서 단계별 브랜치 + PR. 시작 전 `main`에 `v1-final` 태그. 비공개 `Crawling_Project`는 v1 이력 보관. 비밀 값은 `.gitignore` · GitHub Secrets · 환경 변수, push protection 확인 (태그·브랜치·커밋·푸시는 사용자가 말할 때만)
 - [ ] 비용 상한: 평가셋으로 1회 비용 실측 → 사용자 결정
 - [ ] +1 보정·급상승 최소 건수: 수집 1주 뒤 비교 확정
-- [ ] Kiwi vs Okt 비교 측정 (구현 첫 단계, 기록용)
-- [ ] 불용어 후보 추출 → 검토
+- [x] Kiwi vs Okt 비교 측정 (구현 첫 단계, 기록용) → Kiwi 유지 확정 (2026-11-05, [[측정 기록]] M10)
+- [x] 불용어 후보 추출 → 검토 → 7개 확정 (2026-11-05, [[측정 기록]] M11). 규칙 파일 반영 = 계획 2 규칙 전환 DAG의 첫 실사례
 - [ ] 나머지 언론사 5곳 이용 조건 확인 (추가 여부)
 - [ ] OCI 콘솔: VM 사양·ATP 생존 확인 (켜기 전)
 
