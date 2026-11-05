@@ -153,22 +153,33 @@ def test_delete_prefix_rejects_empty_prefix(tmp_path):
     assert s.exists(KEY)
 
 
-def test_list_keys_walks_only_the_prefix_folder(tmp_path, monkeypatch):
-    # 원본이 쌓여도 다른 날짜 폴더는 읽지 않도록, 접두어의 마지막 '/' 앞 폴더부터 돈다
+def test_list_keys_does_not_read_folders_outside_the_prefix(tmp_path, monkeypatch):
+    # 원본이 쌓여도 다른 날짜 폴더는 읽지 않는다
     s = LocalRawStore(tmp_path)
     s.put_if_absent("raw/dt=2026-11-04/source=yna/feed=politics/run=20261104T030000Z.json", b"x")
     s.put_if_absent("raw/dt=2026-11-05/source=yna/feed=politics/run=20261105T030000Z.json", b"x")
-    starts = []
-    real_walk = raw_store_module.os.walk
+    scanned = []
+    real_scandir = raw_store_module.os.scandir
 
-    def spy_walk(top, *args, **kwargs):
-        starts.append(Path(top))
-        return real_walk(top, *args, **kwargs)
+    def spy_scandir(path):
+        scanned.append(Path(path))
+        return real_scandir(path)
 
-    monkeypatch.setattr(raw_store_module.os, "walk", spy_walk)
+    monkeypatch.setattr(raw_store_module.os, "scandir", spy_scandir)
     assert len(s.list_keys("raw/dt=2026-11-04/")) == 1
-    assert len(s.list_keys("raw/dt=2026-1")) == 2
-    assert starts == [tmp_path / "raw" / "dt=2026-11-04", tmp_path / "raw"]
+    assert not any("dt=2026-11-05" in part for path in scanned for part in path.parts)
+    assert len(s.list_keys("raw/dt=2026-1")) == 2  # 폴더 이름 중간에서 끝나는 접두어도 그 아래까지 본다
+
+
+def test_list_keys_returns_names_as_stored_not_aliases(tmp_path):
+    # Windows는 대소문자와 끝의 '.'을 무시해 'RAW/'·'raw./'로도 같은 폴더가 열린다.
+    # 그런 별칭 접두어로 키를 돌려주거나 지우면 안 된다(키는 디스크에 있는 이름 그대로다)
+    s = LocalRawStore(tmp_path)
+    s.put_if_absent(KEY, b"x")
+    assert s.list_keys("RAW/") == []
+    assert s.list_keys("raw./") == []
+    assert s.delete_prefix("raw./") == 0
+    assert s.exists(KEY)
 
 
 @pytest.mark.parametrize("prefix", ["../", "/raw/", ".tmp/", "raw/../raw/", "raw//", "C:/", "raw\\dt"])

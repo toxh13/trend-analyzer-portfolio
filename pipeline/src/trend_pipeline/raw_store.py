@@ -103,19 +103,23 @@ class LocalRawStore:
         return True
 
     def list_keys(self, prefix: str) -> list[str]:
-        # 접두어의 마지막 '/' 앞은 폴더 경로다. 그 폴더부터만 돌아 원본이 쌓여도 다른 날짜 폴더는 읽지 않는다
-        folders = prefix.split("/")[:-1]
-        if any(part in ("", ".", "..") or ":" in part or "\\" in part for part in folders) or folders[:1] == [_TMP_DIR]:
-            return []  # 올바른 키(_validate_key)가 가질 수 없는 폴더라 맞는 키가 없다. 루트 밖·임시 폴더도 돌지 않는다
+        # 루트에서 걷되 접두어와 맞을 수 없는 폴더로는 내려가지 않는다(원본이 쌓여도 다른 날짜 폴더는 읽지 않는다).
+        # 접두어 폴더로 바로 들어가지 않는 이유: Windows는 대소문자와 끝의 '.'을 무시해 'RAW/'·'raw./'로도 같은
+        # 폴더가 열리고, 그러면 디스크의 이름이 아닌 별칭 키를 돌려준다. 걸으며 얻는 이름은 디스크의 이름 그대로다
         keys: list[str] = []
-        for dirpath, dirnames, filenames in os.walk(self._root.joinpath(*folders)):
+        for dirpath, dirnames, filenames in os.walk(self._root):
             directory = Path(dirpath)
+            relative = directory.relative_to(self._root).as_posix()
+            base = "" if relative == "." else f"{relative}/"
             if directory == self._root and _TMP_DIR in dirnames:
                 dirnames.remove(_TMP_DIR)  # 임시 디렉터리는 내려가지 않는다
+            # 폴더가 접두어 안에 있거나(raw/dt=2026-11-04/ ⊂ raw/), 접두어가 폴더 안을 가리킬 때만 내려간다
+            dirnames[:] = [
+                name for name in dirnames if f"{base}{name}/".startswith(prefix) or prefix.startswith(f"{base}{name}/")
+            ]
             for name in filenames:
-                key = (directory / name).relative_to(self._root).as_posix()
-                if key.startswith(prefix):
-                    keys.append(key)
+                if f"{base}{name}".startswith(prefix):
+                    keys.append(f"{base}{name}")
         return sorted(keys)
 
     def delete_prefix(self, prefix: str) -> int:
