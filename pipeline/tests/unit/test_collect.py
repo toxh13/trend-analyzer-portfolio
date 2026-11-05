@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -38,8 +38,8 @@ def ok(body, headers=None):
     return FetchResult(status=200, headers=headers or {}, body=body, requested_at=REQUESTED_AT, attempts=1)
 
 
-def collect(store, fetch, run_type="scheduled", validators=NO_VALIDATORS, spec=SPEC):
-    return collect_feed(spec, INTERVAL_END, run_type, store, validators, fetch)
+def collect(store, fetch, run_type="scheduled", validators=NO_VALIDATORS, spec=SPEC, now=REQUESTED_AT):
+    return collect_feed(spec, INTERVAL_END, run_type, store, validators, fetch, now=now)
 
 
 @pytest.fixture
@@ -175,6 +175,37 @@ def test_lost_race_keeps_first_writer(store, monkeypatch):
     result = collect(store, fetch)
     assert result == CollectResult(SPEC, KEY, "skipped_exists", None, None, None)
     assert store.get(KEY) == b"winner"
+
+
+@pytest.mark.parametrize("run_type", ["scheduled", "manual"])
+@pytest.mark.parametrize(
+    ("now", "reason"),
+    [
+        (INTERVAL_END + timedelta(hours=1, seconds=1), "too_late"),  # 지난 구간: 지금 피드를 옛 구간 이름으로 저장하게 된다
+        (INTERVAL_END - timedelta(minutes=5, seconds=1), "too_early"),  # 아직 오지 않은 구간
+    ],
+)
+def test_collecting_run_refuses_interval_outside_window(store, run_type, now, reason):
+    fetch = FakeFetch(result=ok("<rss><channel></channel></rss>"))
+    result = collect(store, fetch, run_type=run_type, now=now)
+    assert fetch.calls == []
+    assert (result.raw_key, result.action, result.status, result.quality) == (None, "failed", None, None)
+    assert result.error is not None and result.error.startswith(f"{reason}: ")
+    assert store.list_keys("") == []
+
+
+@pytest.mark.parametrize(
+    "now", [INTERVAL_END + timedelta(hours=1), INTERVAL_END - timedelta(minutes=5)]  # 경계는 받는다
+)
+def test_collecting_run_accepts_window_edges(store, now):
+    fetch = FakeFetch(result=ok("<rss><channel></channel></rss>"))
+    assert collect(store, fetch, now=now).action == "fetched"
+
+
+def test_backfill_ignores_window(store):
+    store.put_if_absent(KEY, b"old")
+    result = collect(store, FakeFetch(), run_type="backfill", now=INTERVAL_END + timedelta(days=30))
+    assert result.action == "skipped_backfill"
 
 
 def test_invalid_run_type(store):

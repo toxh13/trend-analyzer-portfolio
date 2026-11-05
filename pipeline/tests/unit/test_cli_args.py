@@ -66,13 +66,25 @@ def test_whole_hour_in_other_offset_is_accepted(stop_at_connect: None) -> None:
 
 
 @pytest.mark.parametrize("run_type", ["scheduled", "manual"])
-@pytest.mark.parametrize("interval_end", ["2026-11-04T03:00:00Z", "2026-11-04T02:00:00Z", "2020-01-01T00:00:00Z"])
-def test_collecting_run_accepts_interval_end_up_to_five_minutes_ahead(
+@pytest.mark.parametrize("interval_end", ["2026-11-04T03:00:00Z", "2026-11-04T02:00:00Z"])
+def test_collecting_run_accepts_interval_end_within_window(
     stop_at_connect: None, run_type: str, interval_end: str
 ) -> None:
-    # 지금 02:56 → 03:00은 5분 안이라 받는다(시계 차이·조금 이른 실행 허용)
+    # 지금 02:56 → 03:00은 5분 안(시계 차이·조금 이른 실행 허용), 02:00은 1시간 안(늦은 실행 허용)
     with pytest.raises(ArgsAccepted):
         main(run_args(interval_end, run_type=run_type))
+
+
+@pytest.mark.parametrize("run_type", ["scheduled", "manual"])
+@pytest.mark.parametrize("interval_end", ["2026-11-04T01:00:00Z", "2020-01-01T00:00:00Z"])
+def test_collecting_run_rejects_interval_end_older_than_one_hour(
+    stop_at_connect: None, capsys: pytest.CaptureFixture[str], run_type: str, interval_end: str
+) -> None:
+    # 지금 02:56 → 01:00은 1시간 56분 전. 받으면 지금 피드를 옛 구간 이름으로 저장한다(지난 구간은 백필로)
+    with pytest.raises(SystemExit) as exc:
+        main(run_args(interval_end, run_type=run_type))
+    assert exc.value.code == 2
+    assert "backfill" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("run_type", ["scheduled", "manual"])

@@ -93,9 +93,11 @@ def test_scheduled_runs_collect_then_send_stored_etag(
         return FetchResult(status=200, headers=headers, body=body, requested_at=now, attempts=1)
 
     monkeypatch.setattr("trend_pipeline.__main__.fetch_feed", fake_fetch)
-    # 정기 실행은 지금(UTC)+5분보다 늦은 구간을 받지 않으므로 지난 정각과 이번 정각을 쓴다
+    # 정기 실행은 수집 범위(지금 − 1시간 ~ 지금 + 5분) 안의 구간만 받으므로, 실행마다 지금 시각을 구간 끝 + 2분으로 고정한다
     current_hour = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
     first_end, next_end = current_hour - timedelta(hours=1), current_hour
+    clock = {"now": first_end + timedelta(minutes=2)}
+    monkeypatch.setattr("trend_pipeline.__main__._utc_now", lambda: clock["now"])
     raw_root = tmp_path / "raw"
     store = LocalRawStore(raw_root)
     specs = load_feeds()
@@ -111,6 +113,7 @@ def test_scheduled_runs_collect_then_send_stored_etag(
     assert calls == [(spec.source, spec.feed, None) for spec in specs]  # 처음에는 저장된 validator가 없다
 
     calls.clear()
+    clock["now"] = next_end + timedelta(minutes=2)
     assert main(scheduled(next_end)) == 0
     second = SUMMARY.fullmatch(capsys.readouterr().out.strip())
     # 다음 구간은 pipeline_feed_runs에 남은 피드별 ETag로 요청하고, 304라 새 기사가 없다
